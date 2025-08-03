@@ -1,0 +1,59 @@
+{
+  "compilerOptions": {
+    // Language and Environment
+    "target": "ES2022",                          // Node.js 20+ supports ES2022
+    "lib": ["ES2022"],                          // Include ES2022 library features
+    "module": "NodeNext",                        // Use Node.js native ES modules
+    "moduleResolution": "NodeNext",              // Node.js module resolution
+
+    // Emit
+    "outDir": "./dist",                          // Output directory for compiled files
+    "rootDir": "./src",                          // Source directory
+    "declaration": true,                         // Generate .d.ts files
+    "declarationMap": true,                      // Generate source maps for declarations
+    "sourceMap": true,                           // Generate source maps
+    "removeComments": true,                      // Remove comments in output
+    "importHelpers": false,                      // Don't import helpers from tslib
+
+    // Type Checking
+    "strict": true,                              // Enable all strict type checking options
+    "noImplicitAny": true,                       // Error on implicit any
+    "strictNullChecks": true,                    // Enable strict null checks
+    "strictFunctionTypes": true,                 // Strict function types
+    "strictBindCallApply": true,                 // Strict bind/call/apply
+    "strictPropertyInitialization": true,        // Strict property initialization
+    "noImplicitThis": true,                      // Error on implicit this
+    "alwaysStrict": true,                        // Use strict mode in output
+    "noUnusedLocals": true,                      // Error on unused locals
+    "noUnusedParameters": true,                  // Error on unused parameters
+    "noImplicitReturns": true,                   // Error when not all paths return
+    "noFallthroughCasesInSwitch": true,         // Error on fallthrough cases
+    "noUncheckedIndexedAccess": true,           // Add undefined to index signatures
+
+    // Module Resolution
+    "esModuleInterop": true,                     // Enable interoperability between CommonJS and ES modules
+    "allowSyntheticDefaultImports": true,        // Allow default imports from modules with no default export
+    "resolveJsonModule": true,                   // Include JSON modules
+    "forceConsistentCasingInFileNames": true,   // Disallow inconsistently-cased references
+
+    // Advanced
+    "skipLibCheck": true,                        // Skip type checking of declaration files
+    "allowJs": false,                            // Don't allow JavaScript files
+    "checkJs": false,                            // Don't check JavaScript files
+    "experimentalDecorators": false,             // We don't use decorators
+    "emitDecoratorMetadata": false              // We don't use decorators
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "**/*.spec.ts"
+  ],
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
+  }
+}
