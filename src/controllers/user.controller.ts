@@ -191,6 +191,7 @@ export const login = async (
         level: user.level,
         streak: user.streak,
       },
+      token: token, // Add token to response for frontend
     });
   } catch (error) {
     console.error("Login error:", error);
@@ -309,6 +310,7 @@ export const googleLogin = async (
         level: user.level,
         streak: user.streak,
       },
+      token: token, // Add token to response for frontend
     });
   } catch (error) {
     console.error("Google login error:", error);

@@ -55,6 +55,7 @@ export interface AuthResponse {
     level?: number;
     streak?: number;
   };
+  token?: string; // Add token field for frontend
 }
 
 export interface UpdateProfileRequest {
