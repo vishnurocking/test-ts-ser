@@ -24,7 +24,7 @@ if (isLocal) {
   pgPool = new Pool({
     user: process.env.POSTGRES_USER || "postgres",
     host: process.env.POSTGRES_HOST || "localhost",
-    database: process.env.POSTGRES_DB || "lms_db",
+    database: process.env.POSTGRES_DB || "hybrid_db",
     password: process.env.POSTGRES_PASSWORD || "admin",
     port: parseInt(process.env.POSTGRES_PORT || "5432"),
     max: 20,
@@ -36,7 +36,7 @@ if (isLocal) {
   pgPool = new Pool({
     user: process.env.RDS_USERNAME,
     host: process.env.RDS_HOSTNAME,
-    database: process.env.RDS_DB_NAME,
+    database: process.env.RDS_DB_NAME || "hybrid_db",
     password: process.env.RDS_PASSWORD,
     port: parseInt(process.env.RDS_PORT || "5432"),
     ssl: {
@@ -87,11 +87,11 @@ export const ddbDocClient = DynamoDBDocumentClient.from(
 
 export { pgPool, isLocal };
 
-// Table name constants (DynamoDB only)
+// Table name constants (DynamoDB only) - Updated names
 export const TABLE_NAMES = {
-  LMS: "LMS",
-  FREE_LESSONS: "FreeLessons",
-  USER_PROGRESS: "UserProgress",
+  COURSES: "Courses",
+  LEARNING: "Learning", 
+  LEARNING_PROGRESS: "LearningProgress",
 } as const;
 
 // Connection test functions

@@ -1,19 +1,24 @@
 // ts-server/src/controllers/coursePurchase.controller.ts
 // Purchase controller with TypeScript
 
-import { Request, Response } from 'express';
-import Razorpay from 'razorpay';
-import crypto from 'crypto';
-import { v4 as uuidv4 } from 'uuid';
-import { GetCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { ddbDocClient, pgPool, TABLE_NAMES, query } from '../config/databaseClients.js';
+import { Request, Response } from "express";
+import Razorpay from "razorpay";
+import crypto from "crypto";
+import { v4 as uuidv4 } from "uuid";
+import { GetCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  ddbDocClient,
+  pgPool,
+  TABLE_NAMES,
+  query,
+} from "../config/databaseClients.js";
 import {
   Purchase,
   Course,
   CreatePurchaseRequest,
   VerifyPaymentRequest,
   ApiResponse,
-} from '../types/index.js';
+} from "../types/index.js";
 
 // Razorpay instance
 const razorpay = new Razorpay({
@@ -24,10 +29,12 @@ const razorpay = new Razorpay({
 // Create Razorpay order and pending purchase record
 export const createRazorpayOrder = async (
   req: Request<{}, {}, CreatePurchaseRequest>,
-  res: Response<ApiResponse<{ orderId: string; amount: number; courseId: string }>>
+  res: Response<
+    ApiResponse<{ orderId: string; amount: number; courseId: string }>
+  >
 ): Promise<void> => {
   const userId = req.id;
-  const { courseId, amount, currency = 'INR' } = req.body;
+  const { courseId, amount, currency = "INR" } = req.body;
 
   if (!userId) {
     res.status(401).json({
@@ -47,10 +54,10 @@ export const createRazorpayOrder = async (
       SELECT purchase_id, status FROM purchases 
       WHERE user_id = $1 AND course_id = $2
     `;
-    const existingResult = await pgClient.query<Purchase>(existingPurchaseQuery, [
-      userId,
-      courseId,
-    ]);
+    const existingResult = await pgClient.query<Purchase>(
+      existingPurchaseQuery,
+      [userId, courseId]
+    );
 
     if (existingResult.rows.length > 0) {
       const existingPurchase = existingResult.rows[0];
@@ -66,7 +73,7 @@ export const createRazorpayOrder = async (
     // Fetch course details from DynamoDB
     const { Item: course } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         Key: { PK: `COURSE#${courseId}`, SK: "METADATA" },
       })
     );
@@ -80,7 +87,8 @@ export const createRazorpayOrder = async (
     }
 
     const courseData = course as Course;
-    const coursePriceNumber = parseFloat(courseData.coursePrice.toString()) || 0;
+    const coursePriceNumber =
+      parseFloat(courseData.coursePrice.toString()) || 0;
 
     // Use provided amount or course price
     const finalAmount = amount || coursePriceNumber;
@@ -120,7 +128,7 @@ export const createRazorpayOrder = async (
           WHERE user_id = $6 AND course_id = $7
           RETURNING purchase_id
         `;
-        
+
         await pgClient.query(updateQuery, [
           finalAmount,
           currency,
@@ -139,7 +147,7 @@ export const createRazorpayOrder = async (
             amount, currency, status, order_id, payment_method, content_type
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         `;
-        
+
         await pgClient.query(insertQuery, [
           purchaseId,
           userId,
@@ -148,10 +156,10 @@ export const createRazorpayOrder = async (
           courseData.courseThumbnail || null,
           finalAmount,
           currency,
-          'pending',
+          "pending",
           order.id,
-          'razorpay',
-          'video_course',
+          "razorpay",
+          "video_course",
         ]);
       }
 
@@ -187,7 +195,12 @@ export const verifyPayment = async (
   res: Response<ApiResponse<Purchase>>
 ): Promise<void> => {
   const userId = req.id;
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, courseId } = req.body;
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    courseId,
+  } = req.body;
 
   if (!userId) {
     res.status(401).json({
@@ -254,7 +267,7 @@ export const verifyPayment = async (
         updated_at = CURRENT_TIMESTAMP
       WHERE user_id = $2 AND NOT ($1 = ANY(COALESCE(enrolled_courses, '{}')))
     `;
-    
+
     await pgClient.query(updateUserQuery, [[courseId], userId]);
 
     await pgClient.query("COMMIT");
@@ -300,7 +313,7 @@ export const getMyCourses = async (
       WHERE user_id = $1 AND status = 'completed'
       ORDER BY completed_at DESC
     `;
-    
+
     const purchaseResult = await query<Purchase>(purchasesQuery, [userId]);
     const purchases = purchaseResult.rows;
 
@@ -310,14 +323,14 @@ export const getMyCourses = async (
         try {
           const { Item: course } = await ddbDocClient.send(
             new GetCommand({
-              TableName: TABLE_NAMES.LMS,
+              TableName: TABLE_NAMES.COURSES,
               Key: { PK: `COURSE#${purchase.course_id}`, SK: "METADATA" },
             })
           );
 
           return {
             ...purchase,
-            course: course as Course || null,
+            course: (course as Course) || null,
           };
         } catch (error) {
           console.error(`Error fetching course ${purchase.course_id}:`, error);
@@ -363,7 +376,7 @@ export const checkPurchaseStatus = async (
       SELECT * FROM purchases 
       WHERE user_id = $1 AND course_id = $2 AND status = 'completed'
     `;
-    
+
     const result = await query<Purchase>(purchaseQuery, [userId, courseId]);
     const isPurchased = result.rows.length > 0;
 
@@ -395,8 +408,10 @@ export const getAllPurchases = async (
       JOIN users u ON p.user_id = u.user_id
       ORDER BY p.created_at DESC
     `;
-    
-    const result = await query<Purchase & { user_name: string; user_email: string }>(purchasesQuery);
+
+    const result = await query<
+      Purchase & { user_name: string; user_email: string }
+    >(purchasesQuery);
 
     res.status(200).json({
       success: true,

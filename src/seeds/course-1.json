@@ -1,0 +1,82 @@
+{
+  "courseMetadata": {
+    "PK": "COURSE#dfcca82b-09f1-4048-885a-a2dfe2c090da",
+    "SK": "METADATA",
+    "courseId": "dfcca82b-09f1-4048-885a-a2dfe2c090da",
+    "courseTitle": "Super Learner",
+    "subTitle": "Sky Rocket Your Learning Journey",
+    "description": "Sky Rocket Your Learning Journey Now - Master advanced learning techniques and accelerate your knowledge acquisition.",
+    "category": "Learning",
+    "courseLevel": "Intermediate",
+    "coursePrice": 187,
+    "courseThumbnail": "https://res.cloudinary.com/dogqihed0/image/upload/v1752050957/lms_thumbnails/lexyubon3p2ai1cyfqe2.jpg",
+    "courseThumbnailPublicId": "lms_thumbnails/lexyubon3p2ai1cyfqe2",
+    "creator": "ADMIN_USER_ID",
+    "isPublished": true,
+    "createdAt": "2025-01-04T10:00:00.000Z",
+    "primaryLanguage": "en",
+    "supportedLanguages": ["en"],
+    "contentType": "video_course",
+    "difficulty": "intermediate",
+    "estimatedDuration": 240,
+    "tags": ["learning", "productivity", "skills"],
+    "isActive": true,
+    "enrolledStudents": [],
+    "GSI1PK": "USER#ADMIN_USER_ID",
+    "GSI1SK": "COURSE#dfcca82b-09f1-4048-885a-a2dfe2c090da",
+    "GSI2PK": "PUBLISHED#true",
+    "GSI2SK": "Learning#187",
+    "GSI3PK": "CONTENT#video_course#en",
+    "GSI3SK": "intermediate#240"
+  },
+  "lectures": [
+    {
+      "PK": "COURSE#dfcca82b-09f1-4048-885a-a2dfe2c090da",
+      "SK": "LECTURE#87c307ad-e3aa-4915-925f-eb0d70e476e7",
+      "lectureId": "87c307ad-e3aa-4915-925f-eb0d70e476e7",
+      "lectureTitle": "Intro",
+      "videoUrl": "https://res.cloudinary.com/dogqihed0/video/upload/v1752051743/lms_videos/xae1xjazuapptqunq9gc.mp4",
+      "publicId": "lms_videos/xae1xjazuapptqunq9gc",
+      "isPreviewFree": true,
+      "createdAt": "2025-01-04T10:05:00.000Z",
+      "duration": 600,
+      "difficulty": "beginner"
+    },
+    {
+      "PK": "COURSE#dfcca82b-09f1-4048-885a-a2dfe2c090da",
+      "SK": "LECTURE#a4ddbaaf-e8b4-4695-86e7-b97e26336df0",
+      "lectureId": "a4ddbaaf-e8b4-4695-86e7-b97e26336df0",
+      "lectureTitle": "Kick Start",
+      "videoUrl": "https://res.cloudinary.com/dogqihed0/video/upload/v1751877451/kpccjbw6eqd5mj6vrcps.mp4",
+      "publicId": "kpccjbw6eqd5mj6vrcps",
+      "isPreviewFree": false,
+      "createdAt": "2025-01-04T10:10:00.000Z",
+      "duration": 900,
+      "difficulty": "intermediate"
+    },
+    {
+      "PK": "COURSE#dfcca82b-09f1-4048-885a-a2dfe2c090da",
+      "SK": "LECTURE#0e66250f-e817-4ece-b790-066aa986ac83",
+      "lectureId": "0e66250f-e817-4ece-b790-066aa986ac83",
+      "lectureTitle": "Get Set",
+      "videoUrl": "https://res.cloudinary.com/dogqihed0/video/upload/v1751877501/bwjlq7enlqogrzvwzzqf.mp4",
+      "publicId": "bwjlq7enlqogrzvwzzqf",
+      "isPreviewFree": true,
+      "createdAt": "2025-01-04T10:15:00.000Z",
+      "duration": 720,
+      "difficulty": "intermediate"
+    },
+    {
+      "PK": "COURSE#dfcca82b-09f1-4048-885a-a2dfe2c090da",
+      "SK": "LECTURE#e51e67aa-b7cb-4a9a-86e3-c525ecde36db",
+      "lectureId": "e51e67aa-b7cb-4a9a-86e3-c525ecde36db",
+      "lectureTitle": "Gooo....!",
+      "videoUrl": "https://res.cloudinary.com/dogqihed0/video/upload/v1751877523/yg2u5u9qdhcrfcjkz6aw.mp4",
+      "publicId": "yg2u5u9qdhcrfcjkz6aw",
+      "isPreviewFree": false,
+      "createdAt": "2025-01-04T10:20:00.000Z",
+      "duration": 1200,
+      "difficulty": "advanced"
+    }
+  ]
+}

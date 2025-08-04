@@ -1,0 +1,85 @@
+{
+  "PK": "UNIT#2",
+  "SK": "LESSON#1",
+  "lessonId": "2.1",
+  "unitId": "2",
+  "lessonOrder": 1,
+  "title": "Numbers 1-10",
+  "titleHindi": "संख्या 1-10",
+  "description": "Shopping, phone numbers और basic counting के लिए अंग्रेजी में 1 से 10 तक की संख्याएं सीखें",
+  "descriptionHindi": "Learn numbers 1-10 in English for shopping, phone numbers and basic counting",
+  "difficulty": "beginner",
+  "estimatedTime": 8,
+  "prerequisites": ["1.5"],
+  "vocabulary": [
+    {
+      "english": "One",
+      "hindi": "एक",
+      "pronunciation": "वन",
+      "example": "मुझे one kilo आम चाहिए, bhaiya।"
+    },
+    {
+      "english": "Two",
+      "hindi": "दो",
+      "pronunciation": "टू",
+      "example": "Two tickets book करिए Bangalore के लिए।"
+    },
+    {
+      "english": "Five",
+      "hindi": "पांच",
+      "pronunciation": "फाइव",
+      "example": "Auto का fare five hundred rupees है।"
+    },
+    {
+      "english": "Seven",
+      "hindi": "सात",
+      "pronunciation": "सेवन",
+      "example": "मेरी building का number seven है।"
+    },
+    {
+      "english": "Ten",
+      "hindi": "दस",
+      "pronunciation": "टेन",
+      "example": "Market में ten varieties के rice मिलते हैं।"
+    }
+  ],
+  "exercises": [
+    {
+      "exerciseId": "2.1.1",
+      "type": "multiple_choice",
+      "question": "अंग्रेजी में 'तीन' को कैसे लिखते हैं?",
+      "options": ["Two", "Three", "Four", "Five"],
+      "correctAnswer": "Three",
+      "explanation": "'Three' अंग्रेजी में 'तीन' होता है। यह shopping में बहुत काम आता है।"
+    },
+    {
+      "exerciseId": "2.1.2",
+      "type": "fill_blank",
+      "sentence": "मुझे _____ kg चावल चाहिए। (आठ)",
+      "correctAnswer": "Eight",
+      "hint": "'आठ' को अंग्रेजी में क्या कहते हैं?",
+      "options": ["Six", "Seven", "Eight", "Nine"]
+    },
+    {
+      "exerciseId": "2.1.3",
+      "type": "translation",
+      "hindiText": "मेरा mobile number का last digit छह है।",
+      "options": [
+        "My mobile number's last digit is six.",
+        "My phone number last digit is six."
+      ],
+      "correctAnswer": "My mobile number's last digit is six.",
+      "hint": "'छह' के लिए 'six' का प्रयोग करें",
+      "explanation": "Possessive form ('number's') grammar के लिए जरूरी है।"
+    }
+  ],
+  "supportedLanguages": ["en", "hi"],
+  "tags": ["numbers", "counting", "shopping", "phone"],
+  "competencyLevel": "A1",
+  "practiceType": "vocabulary",
+  "completionRate": 88.7,
+  "averageRating": 4.3,
+  "isActive": "active",
+  "createdAt": "2025-01-04T11:00:00Z",
+  "updatedAt": "2025-01-04T11:00:00Z"
+}

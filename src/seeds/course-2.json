@@ -1,0 +1,58 @@
+{
+  "courseMetadata": {
+    "PK": "COURSE#d539c7dc-8bfd-490c-8692-d0b5c9b0f243",
+    "SK": "METADATA",
+    "courseId": "d539c7dc-8bfd-490c-8692-d0b5c9b0f243",
+    "courseTitle": "Fast-Track English Fluency",
+    "subTitle": "Be Fluent in English",
+    "description": "This course is designed for intermediate learners who want to improve their speaking and listening skills rapidly. We focus on real-world conversations, idioms, and pronunciation.",
+    "category": "Language",
+    "courseLevel": "Medium",
+    "coursePrice": 199,
+    "courseThumbnail": "https://res.cloudinary.com/dogqihed0/image/upload/v1751870143/vt65gxr9rbkaooifpwxw.jpg",
+    "courseThumbnailPublicId": "vt65gxr9rbkaooifpwxw",
+    "creator": "ADMIN_USER_ID",
+    "isPublished": true,
+    "createdAt": "2025-01-04T11:00:00.000Z",
+    "primaryLanguage": "en",
+    "supportedLanguages": ["en", "hi"],
+    "contentType": "video_course",
+    "difficulty": "intermediate",
+    "estimatedDuration": 300,
+    "tags": ["language", "english", "fluency", "speaking"],
+    "isActive": true,
+    "enrolledStudents": [],
+    "GSI1PK": "USER#ADMIN_USER_ID",
+    "GSI1SK": "COURSE#d539c7dc-8bfd-490c-8692-d0b5c9b0f243",
+    "GSI2PK": "PUBLISHED#true",
+    "GSI2SK": "Language#199",
+    "GSI3PK": "CONTENT#video_course#en",
+    "GSI3SK": "intermediate#300"
+  },
+  "lectures": [
+    {
+      "PK": "COURSE#d539c7dc-8bfd-490c-8692-d0b5c9b0f243",
+      "SK": "LECTURE#c64bfe72-591d-4729-b875-5a85e71febbc",
+      "lectureId": "c64bfe72-591d-4729-b875-5a85e71febbc",
+      "lectureTitle": "Introduction & Course Goals",
+      "videoUrl": "https://res.cloudinary.com/dogqihed0/video/upload/v1751875263/gqmkkfpt0jb9xm21gt3u.mp4",
+      "publicId": "gqmkkfpt0jb9xm21gt3u",
+      "isPreviewFree": true,
+      "createdAt": "2025-01-04T11:05:00.000Z",
+      "duration": 480,
+      "difficulty": "beginner"
+    },
+    {
+      "PK": "COURSE#d539c7dc-8bfd-490c-8692-d0b5c9b0f243",
+      "SK": "LECTURE#8483d1e0-46df-49e0-821a-2eb4c323e453",
+      "lectureId": "8483d1e0-46df-49e0-821a-2eb4c323e453",
+      "lectureTitle": "Mastering the Present Perfect Tense",
+      "videoUrl": "https://res.cloudinary.com/dogqihed0/video/upload/v1751875229/pyihejxnb2wdvvzvwyzx.mp4",
+      "publicId": "pyihejxnb2wdvvzvwyzx",
+      "isPreviewFree": false,
+      "createdAt": "2025-01-04T11:10:00.000Z",
+      "duration": 1080,
+      "difficulty": "intermediate"
+    }
+  ]
+}

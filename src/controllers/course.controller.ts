@@ -1,17 +1,24 @@
 // ts-server/src/controllers/course.controller.ts
 // Course management controller with TypeScript
 
-import { Request, Response } from 'express';
-import crypto from 'crypto';
+import { Request, Response } from "express";
+import crypto from "crypto";
 import {
   GetCommand,
   PutCommand,
   QueryCommand,
   UpdateCommand,
   DeleteCommand,
-} from '@aws-sdk/lib-dynamodb';
-import { ddbDocClient, pgPool, TABLE_NAMES } from '../config/databaseClients.js';
-import { uploadImageToCloudinary, uploadVideoToCloudinary } from '../utils/cloudinary.js';
+} from "@aws-sdk/lib-dynamodb";
+import {
+  ddbDocClient,
+  pgPool,
+  TABLE_NAMES,
+} from "../config/databaseClients.js";
+import {
+  uploadImageToCloudinary,
+  uploadVideoToCloudinary,
+} from "../utils/cloudinary.js";
 import {
   Course,
   Lecture,
@@ -21,7 +28,7 @@ import {
   UpdateLectureRequest,
   ApiResponse,
   CourseSearchParams,
-} from '../types/index.js';
+} from "../types/index.js";
 
 // Helper function to build DynamoDB UpdateExpression
 interface UpdateExpression {
@@ -36,7 +43,7 @@ const buildUpdateExpression = (body: Record<string, any>): UpdateExpression => {
     ExpressionAttributeValues: {},
     ExpressionAttributeNames: {},
   };
-  
+
   let first = true;
   for (const key in body) {
     if (body[key] !== undefined) {
@@ -60,8 +67,15 @@ export const createCourse = async (
   res: Response<ApiResponse<Course>>
 ): Promise<void> => {
   try {
-    const { courseTitle, category, subTitle, description, courseLevel, coursePrice } = req.body;
-    
+    const {
+      courseTitle,
+      category,
+      subTitle,
+      description,
+      courseLevel,
+      coursePrice,
+    } = req.body;
+
     if (!courseTitle || !category) {
       res.status(400).json({
         success: false,
@@ -106,9 +120,9 @@ export const createCourse = async (
     };
 
     await ddbDocClient.send(
-      new PutCommand({ 
-        TableName: TABLE_NAMES.LMS, 
-        Item: courseItem 
+      new PutCommand({
+        TableName: TABLE_NAMES.COURSES,
+        Item: courseItem,
       })
     );
 
@@ -137,7 +151,7 @@ export const editCourse = async (
     // Fetch existing course
     const { Item: existingCourse } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         Key: { PK: `COURSE#${courseId}`, SK: "METADATA" },
       })
     );
@@ -161,10 +175,13 @@ export const editCourse = async (
 
     // Handle thumbnail upload if file provided
     let updatePayload = { ...req.body };
-    
+
     if (req.file) {
       try {
-        const uploadResult = await uploadImageToCloudinary(req.file, 'course-thumbnails');
+        const uploadResult = await uploadImageToCloudinary(
+          req.file,
+          "course-thumbnails"
+        );
         updatePayload.courseThumbnail = uploadResult.secure_url;
         updatePayload.courseThumbnailPublicId = uploadResult.public_id;
       } catch (uploadError) {
@@ -178,7 +195,10 @@ export const editCourse = async (
     }
 
     // Convert coursePrice to number if provided
-    if (updatePayload.coursePrice !== undefined && updatePayload.coursePrice !== null) {
+    if (
+      updatePayload.coursePrice !== undefined &&
+      updatePayload.coursePrice !== null
+    ) {
       updatePayload.coursePrice = parseFloat(updatePayload.coursePrice as any);
     }
 
@@ -197,7 +217,7 @@ export const editCourse = async (
     }
 
     const updateCommand = new UpdateCommand({
-      TableName: TABLE_NAMES.LMS,
+      TableName: TABLE_NAMES.COURSES,
       Key: { PK: `COURSE#${courseId}`, SK: "METADATA" },
       UpdateExpression,
       ExpressionAttributeValues,
@@ -205,7 +225,9 @@ export const editCourse = async (
       ReturnValues: "ALL_NEW",
     });
 
-    const { Attributes: updatedCourse } = await ddbDocClient.send(updateCommand);
+    const { Attributes: updatedCourse } = await ddbDocClient.send(
+      updateCommand
+    );
 
     res.status(200).json({
       success: true,
@@ -232,7 +254,7 @@ export const getCourseById = async (
     // Get course and all its lectures
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         KeyConditionExpression: "PK = :pk",
         ExpressionAttributeValues: {
           ":pk": `COURSE#${courseId}`,
@@ -249,8 +271,10 @@ export const getCourseById = async (
     }
 
     // Separate course metadata and lectures
-    const course = Items.find(item => item.SK === "METADATA") as Course;
-    const lectures = Items.filter(item => item.SK.startsWith("LECTURE#")) as Lecture[];
+    const course = Items.find((item) => item.SK === "METADATA") as Course;
+    const lectures = Items.filter((item) =>
+      item.SK.startsWith("LECTURE#")
+    ) as Lecture[];
 
     if (!course) {
       res.status(404).json({
@@ -289,7 +313,7 @@ export const getCreatorCourses = async (
 
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         IndexName: "GSI1-ByCreator",
         KeyConditionExpression: "GSI1PK = :creatorPK",
         ExpressionAttributeValues: {
@@ -301,10 +325,13 @@ export const getCreatorCourses = async (
     let courses = (Items || []) as Course[];
 
     // Normalize data types for consistency
-    courses = courses.map(course => ({
+    courses = courses.map((course) => ({
       ...course,
       isPublished: course.isPublished === true || course.isPublished === "true",
-      coursePrice: typeof course.coursePrice === 'string' ? parseFloat(course.coursePrice) : course.coursePrice
+      coursePrice:
+        typeof course.coursePrice === "string"
+          ? parseFloat(course.coursePrice)
+          : course.coursePrice,
     }));
 
     // Return response format compatible with JavaScript server
@@ -328,10 +355,11 @@ export const getPublishedCourses = async (
   res: Response<ApiResponse<Course[]>>
 ): Promise<void> => {
   try {
-    const { category, level, sortBy = 'createdAt' } = req.query;
+    const { category, level, sortBy = "createdAt" } = req.query;
 
     // Handle both string and boolean isPublished values for backward compatibility
-    let filterExpression = "(isPublished = :publishedBool OR isPublished = :publishedStr)";
+    let filterExpression =
+      "(isPublished = :publishedBool OR isPublished = :publishedStr)";
     const expressionAttributeValues: Record<string, any> = {
       ":publishedBool": true,
       ":publishedStr": "true", // Handle existing string data
@@ -351,7 +379,7 @@ export const getPublishedCourses = async (
 
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         IndexName: "GSI2-ByPublishedStatus",
         KeyConditionExpression: "GSI2PK = :publishedPK",
         FilterExpression: filterExpression,
@@ -365,19 +393,25 @@ export const getPublishedCourses = async (
     let courses = (Items || []) as Course[];
 
     // Normalize isPublished to boolean for consistency
-    courses = courses.map(course => ({
+    courses = courses.map((course) => ({
       ...course,
-      isPublished: course.isPublished === true || course.isPublished === "true"
+      isPublished: course.isPublished === true || course.isPublished === "true",
     }));
 
     // Sort courses
-    if (sortBy === 'price') {
+    if (sortBy === "price") {
       courses.sort((a, b) => {
-        const priceA = typeof a.coursePrice === 'string' ? parseFloat(a.coursePrice) : a.coursePrice;
-        const priceB = typeof b.coursePrice === 'string' ? parseFloat(b.coursePrice) : b.coursePrice;
+        const priceA =
+          typeof a.coursePrice === "string"
+            ? parseFloat(a.coursePrice)
+            : a.coursePrice;
+        const priceB =
+          typeof b.coursePrice === "string"
+            ? parseFloat(b.coursePrice)
+            : b.coursePrice;
         return priceA - priceB;
       });
-    } else if (sortBy === 'title') {
+    } else if (sortBy === "title") {
       courses.sort((a, b) => a.courseTitle.localeCompare(b.courseTitle));
     }
 
@@ -416,7 +450,7 @@ export const createLecture = async (
     // Check course ownership
     const { Item: course } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         Key: { PK: `COURSE#${courseId}`, SK: "METADATA" },
       })
     );
@@ -445,7 +479,10 @@ export const createLecture = async (
     // Handle video upload
     if (req.file) {
       try {
-        const uploadResult = await uploadVideoToCloudinary(req.file, 'course-videos');
+        const uploadResult = await uploadVideoToCloudinary(
+          req.file,
+          "course-videos"
+        );
         videoUrl = uploadResult.secure_url;
         publicId = uploadResult.public_id;
         duration = uploadResult.duration || 0;
@@ -473,7 +510,7 @@ export const createLecture = async (
 
     await ddbDocClient.send(
       new PutCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         Item: lectureItem,
       })
     );
@@ -504,7 +541,7 @@ export const togglePublishCourse = async (
     // Get course and check ownership
     const { Item: course } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         Key: { PK: `COURSE#${courseId}`, SK: "METADATA" },
       })
     );
@@ -526,27 +563,34 @@ export const togglePublishCourse = async (
     }
 
     // Convert publish query parameter to string for compatibility with existing data
-    const isPublished = publish === 'true';
+    const isPublished = publish === "true";
     const publishedStr = isPublished ? "true" : "false"; // Store as string to match existing data
 
     // Update course publish status with GSI2SK for proper querying
     const updateCommand = new UpdateCommand({
-      TableName: TABLE_NAMES.LMS,
+      TableName: TABLE_NAMES.COURSES,
       Key: { PK: `COURSE#${courseId}`, SK: "METADATA" },
-      UpdateExpression: "SET isPublished = :published, GSI2PK = :gsi2pk, GSI2SK = :gsi2sk",
+      UpdateExpression:
+        "SET isPublished = :published, GSI2PK = :gsi2pk, GSI2SK = :gsi2sk",
       ExpressionAttributeValues: {
         ":published": publishedStr, // Use string for backward compatibility
         ":gsi2pk": isPublished ? "PUBLISHED#true" : "PUBLISHED#false",
-        ":gsi2sk": isPublished ? `${course.category}#${course.coursePrice || 0}` : null,
+        ":gsi2sk": isPublished
+          ? `${course.category}#${course.coursePrice || 0}`
+          : null,
       },
       ReturnValues: "ALL_NEW",
     });
 
-    const { Attributes: updatedCourse } = await ddbDocClient.send(updateCommand);
+    const { Attributes: updatedCourse } = await ddbDocClient.send(
+      updateCommand
+    );
 
     res.status(200).json({
       success: true,
-      message: `Course ${isPublished ? 'published' : 'unpublished'} successfully`,
+      message: `Course ${
+        isPublished ? "published" : "unpublished"
+      } successfully`,
       data: updatedCourse as Course,
     });
   } catch (error) {
@@ -569,7 +613,7 @@ export const deleteCourse = async (
     // Get course and check ownership
     const { Item: course } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         Key: { PK: `COURSE#${courseId}`, SK: "METADATA" },
       })
     );
@@ -593,7 +637,7 @@ export const deleteCourse = async (
     // Get all course items (lectures)
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         KeyConditionExpression: "PK = :pk",
         ExpressionAttributeValues: {
           ":pk": `COURSE#${courseId}`,
@@ -606,7 +650,7 @@ export const deleteCourse = async (
       for (const item of Items) {
         await ddbDocClient.send(
           new DeleteCommand({
-            TableName: TABLE_NAMES.LMS,
+            TableName: TABLE_NAMES.COURSES,
             Key: { PK: item.PK, SK: item.SK },
           })
         );

@@ -1,22 +1,22 @@
 // ts-server/src/controllers/freeLessons.controller.ts
 // Free lessons (language learning) controller with TypeScript
 
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 import {
   PutCommand,
   QueryCommand,
   GetCommand,
   ScanCommand,
   UpdateCommand,
-} from '@aws-sdk/lib-dynamodb';
-import { ddbDocClient, TABLE_NAMES } from '../config/databaseClients.js';
+} from "@aws-sdk/lib-dynamodb";
+import { ddbDocClient, TABLE_NAMES } from "../config/databaseClients.js";
 import {
   FreeLesson,
   Exercise,
   VocabularyItem,
   LessonSearchParams,
   ApiResponse,
-} from '../types/index.js';
+} from "../types/index.js";
 
 // Exercise validation function
 function validateExercise(exercise: Exercise, index: number): string[] {
@@ -42,19 +42,28 @@ function validateExercise(exercise: Exercise, index: number): string[] {
         errors.push(`Exercise ${index + 1}: Missing question`);
       }
       // Validate correctAnswer is within options range for multiple choice
-      if (exercise.options && typeof exercise.correctAnswer === 'number') {
-        if (exercise.correctAnswer < 0 || exercise.correctAnswer >= exercise.options.length) {
-          errors.push(`Exercise ${index + 1}: correctAnswer index out of range`);
+      if (exercise.options && typeof exercise.correctAnswer === "number") {
+        if (
+          exercise.correctAnswer < 0 ||
+          exercise.correctAnswer >= exercise.options.length
+        ) {
+          errors.push(
+            `Exercise ${index + 1}: correctAnswer index out of range`
+          );
         }
       }
       break;
 
     case "fill_blank":
       if (!exercise.sentence && !exercise.question) {
-        errors.push(`Exercise ${index + 1}: Missing sentence or question field`);
+        errors.push(
+          `Exercise ${index + 1}: Missing sentence or question field`
+        );
       }
       if (exercise.options && !Array.isArray(exercise.options)) {
-        errors.push(`Exercise ${index + 1}: Options must be an array if provided`);
+        errors.push(
+          `Exercise ${index + 1}: Options must be an array if provided`
+        );
       }
       break;
 
@@ -66,24 +75,38 @@ function validateExercise(exercise: Exercise, index: number): string[] {
         errors.push(`Exercise ${index + 1}: Translation missing options array`);
       } else {
         if (exercise.options.length < 2) {
-          errors.push(`Exercise ${index + 1}: Translation should have at least 2 options`);
+          errors.push(
+            `Exercise ${index + 1}: Translation should have at least 2 options`
+          );
         }
         // Validate correctAnswer is one of the options
-        if (typeof exercise.correctAnswer === 'string' && !exercise.options.includes(exercise.correctAnswer)) {
-          errors.push(`Exercise ${index + 1}: Translation correctAnswer must be one of the provided options`);
+        if (
+          typeof exercise.correctAnswer === "string" &&
+          !exercise.options.includes(exercise.correctAnswer)
+        ) {
+          errors.push(
+            `Exercise ${
+              index + 1
+            }: Translation correctAnswer must be one of the provided options`
+          );
         }
       }
       break;
 
     default:
-      errors.push(`Exercise ${index + 1}: Unknown exercise type: ${exercise.type}`);
+      errors.push(
+        `Exercise ${index + 1}: Unknown exercise type: ${exercise.type}`
+      );
   }
 
   return errors;
 }
 
 // Vocabulary validation function
-function validateVocabulary(vocabulary: VocabularyItem[], lessonId: string): string[] {
+function validateVocabulary(
+  vocabulary: VocabularyItem[],
+  lessonId: string
+): string[] {
   const errors: string[] = [];
 
   if (!Array.isArray(vocabulary)) {
@@ -93,7 +116,11 @@ function validateVocabulary(vocabulary: VocabularyItem[], lessonId: string): str
 
   vocabulary.forEach((item, index) => {
     if (!item.english || !item.hindi) {
-      errors.push(`Lesson ${lessonId}, Vocabulary ${index + 1}: Missing english or hindi text`);
+      errors.push(
+        `Lesson ${lessonId}, Vocabulary ${
+          index + 1
+        }: Missing english or hindi text`
+      );
     }
   });
 
@@ -109,7 +136,7 @@ export const getActiveLessons = async (
     const { unitId, difficulty, competencyLevel, practiceType } = req.query;
 
     let queryParams: any = {
-      TableName: TABLE_NAMES.FREE_LESSONS,
+      TableName: TABLE_NAMES.LEARNING,
       IndexName: "ActiveLessonsIndex",
       KeyConditionExpression: "isActive = :active",
       ExpressionAttributeValues: {
@@ -131,7 +158,8 @@ export const getActiveLessons = async (
     if (competencyLevel) {
       if (filterExpression) filterExpression += " AND ";
       filterExpression += "competencyLevel = :competencyLevel";
-      queryParams.ExpressionAttributeValues[":competencyLevel"] = competencyLevel;
+      queryParams.ExpressionAttributeValues[":competencyLevel"] =
+        competencyLevel;
     }
     if (practiceType) {
       if (filterExpression) filterExpression += " AND ";
@@ -177,7 +205,7 @@ export const getLessonsByUnit = async (
 
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.FREE_LESSONS,
+        TableName: TABLE_NAMES.LEARNING,
         KeyConditionExpression: "PK = :pk",
         ExpressionAttributeValues: {
           ":pk": `UNIT#${unitId}`,
@@ -213,7 +241,7 @@ export const getLessonById = async (
 
     const { Item } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.FREE_LESSONS,
+        TableName: TABLE_NAMES.LEARNING,
         Key: {
           PK: `UNIT#${unitId}`,
           SK: `LESSON#${lessonOrder}`,
@@ -253,19 +281,20 @@ export const getLessonByLessonId = async (
     const { lessonId } = req.params;
 
     // Parse lesson ID to get unit and order (format: "1.1", "2.3", etc.)
-    const [unitId, lessonOrder] = lessonId.split('.');
-    
+    const [unitId, lessonOrder] = lessonId.split(".");
+
     if (!unitId || !lessonOrder) {
       res.status(400).json({
         success: false,
-        message: "Invalid lesson ID format. Expected format: 'unit.lesson' (e.g., '1.1')",
+        message:
+          "Invalid lesson ID format. Expected format: 'unit.lesson' (e.g., '1.1')",
       });
       return;
     }
 
     const { Item } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.FREE_LESSONS,
+        TableName: TABLE_NAMES.LEARNING,
         Key: {
           PK: `UNIT#${unitId}`,
           SK: `LESSON#${lessonOrder}`,
@@ -298,7 +327,11 @@ export const getLessonByLessonId = async (
 
 // Create or update lesson (admin function)
 export const upsertLesson = async (
-  req: Request<{}, {}, Omit<FreeLesson, 'PK' | 'SK' | 'createdAt' | 'updatedAt'>>,
+  req: Request<
+    {},
+    {},
+    Omit<FreeLesson, "PK" | "SK" | "createdAt" | "updatedAt">
+  >,
   res: Response<ApiResponse<FreeLesson>>
 ): Promise<void> => {
   try {
@@ -332,8 +365,11 @@ export const upsertLesson = async (
 
     // Validate vocabulary if provided
     if (lessonData.vocabulary) {
-      const vocabularyErrors = validateVocabulary(lessonData.vocabulary, lessonData.lessonId);
-      
+      const vocabularyErrors = validateVocabulary(
+        lessonData.vocabulary,
+        lessonData.lessonId
+      );
+
       if (vocabularyErrors.length > 0) {
         res.status(400).json({
           success: false,
@@ -351,14 +387,14 @@ export const upsertLesson = async (
       ...lessonData,
       createdAt: lessonData.createdAt || now,
       updatedAt: now,
-      difficulty: lessonData.difficulty || 'beginner',
+      difficulty: lessonData.difficulty || "beginner",
       estimatedTime: lessonData.estimatedTime || 15,
-      isActive: lessonData.isActive || 'active',
+      isActive: lessonData.isActive || "active",
     };
 
     await ddbDocClient.send(
       new PutCommand({
-        TableName: TABLE_NAMES.FREE_LESSONS,
+        TableName: TABLE_NAMES.LEARNING,
         Item: lesson,
       })
     );
@@ -387,7 +423,7 @@ export const getLessonsByLevel = async (
 
     const { Items } = await ddbDocClient.send(
       new ScanCommand({
-        TableName: TABLE_NAMES.FREE_LESSONS,
+        TableName: TABLE_NAMES.LEARNING,
         FilterExpression: "difficulty = :level AND isActive = :active",
         ExpressionAttributeValues: {
           ":level": level,
@@ -433,12 +469,13 @@ export const searchLessons = async (
     };
 
     if (searchQuery) {
-      filterExpression += " AND (contains(title, :query) OR contains(description, :query))";
+      filterExpression +=
+        " AND (contains(title, :query) OR contains(description, :query))";
       expressionAttributeValues[":query"] = searchQuery;
     }
 
     if (tags) {
-      const tagArray = tags.split(',');
+      const tagArray = tags.split(",");
       tagArray.forEach((tag, index) => {
         filterExpression += ` AND contains(tags, :tag${index})`;
         expressionAttributeValues[`:tag${index}`] = tag.trim();
@@ -447,7 +484,7 @@ export const searchLessons = async (
 
     const { Items } = await ddbDocClient.send(
       new ScanCommand({
-        TableName: TABLE_NAMES.FREE_LESSONS,
+        TableName: TABLE_NAMES.LEARNING,
         FilterExpression: filterExpression,
         ExpressionAttributeValues: expressionAttributeValues,
       })

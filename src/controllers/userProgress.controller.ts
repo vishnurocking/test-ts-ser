@@ -1,20 +1,20 @@
 // ts-server/src/controllers/userProgress.controller.ts
 // User progress tracking for language learning lessons
 
-import { Request, Response } from 'express';
+import { Request, Response } from "express";
 import {
   GetCommand,
   PutCommand,
   QueryCommand,
   UpdateCommand,
-} from '@aws-sdk/lib-dynamodb';
-import { ddbDocClient, TABLE_NAMES } from '../config/databaseClients.js';
+} from "@aws-sdk/lib-dynamodb";
+import { ddbDocClient, TABLE_NAMES } from "../config/databaseClients.js";
 import {
   UserProgress,
   ExerciseResult,
   UpdateLessonProgressRequest,
   ApiResponse,
-} from '../types/index.js';
+} from "../types/index.js";
 
 // Get user progress for all lessons
 export const getUserProgressAll = async (
@@ -34,7 +34,7 @@ export const getUserProgressAll = async (
 
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.USER_PROGRESS,
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
         KeyConditionExpression: "PK = :pk",
         ExpressionAttributeValues: {
           ":pk": `USER#${userId}`,
@@ -76,7 +76,7 @@ export const getUserProgressByLesson = async (
 
     const { Item } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.USER_PROGRESS,
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
         Key: {
           PK: `USER#${userId}`,
           SK: `LESSON#${lessonId}`,
@@ -118,7 +118,7 @@ export const getUserProgressByUnit = async (
 
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.USER_PROGRESS,
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
         IndexName: "UserUnitIndex",
         KeyConditionExpression: "userId = :userId AND unitId = :unitId",
         ExpressionAttributeValues: {
@@ -162,7 +162,7 @@ export const updateLessonProgress = async (
     }
 
     // Parse lesson ID to get unit (format: "1.1" -> unit "1")
-    const unitId = lessonId.split('.')[0];
+    const unitId = lessonId.split(".")[0];
     if (!unitId) {
       res.status(400).json({
         success: false,
@@ -174,7 +174,7 @@ export const updateLessonProgress = async (
     // Check if progress already exists
     const { Item: existingProgress } = await ddbDocClient.send(
       new GetCommand({
-        TableName: TABLE_NAMES.USER_PROGRESS,
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
         Key: {
           PK: `USER#${userId}`,
           SK: `LESSON#${lessonId}`,
@@ -188,7 +188,7 @@ export const updateLessonProgress = async (
     let totalPoints = 0;
 
     // Calculate points based on accuracy and completion
-    if (status === 'completed') {
+    if (status === "completed") {
       totalPoints = Math.round(accuracy * 10); // Base points
       if (accuracy >= 90) totalPoints += 20; // Bonus for high accuracy
       if (accuracy === 100) totalPoints += 30; // Perfect score bonus
@@ -199,7 +199,7 @@ export const updateLessonProgress = async (
       const existing = existingProgress as UserProgress;
       attempts = (existing.attempts || 0) + 1;
       bestAccuracy = Math.max(existing.bestAccuracy || 0, accuracy);
-      
+
       // Don't reduce total points if this attempt scored lower
       if (existing.totalPoints && existing.totalPoints > totalPoints) {
         totalPoints = existing.totalPoints;
@@ -207,13 +207,15 @@ export const updateLessonProgress = async (
     }
 
     // Calculate average time per exercise
-    const averageTime = exerciseResults.length > 0 
-      ? timeSpent / exerciseResults.length 
-      : timeSpent;
+    const averageTime =
+      exerciseResults.length > 0
+        ? timeSpent / exerciseResults.length
+        : timeSpent;
 
     // Count hints used
-    const hintsUsed = exerciseResults.reduce((sum, result) => 
-      sum + (result.hintsUsed || 0), 0
+    const hintsUsed = exerciseResults.reduce(
+      (sum, result) => sum + (result.hintsUsed || 0),
+      0
     );
 
     // Update or create progress
@@ -230,33 +232,36 @@ export const updateLessonProgress = async (
       exerciseResults,
       lastAccessed: now,
       createdAt: existingProgress?.createdAt || now,
-      
+
       // Enhanced fields
       streak: existingProgress?.streak || 0,
       totalPoints,
       bestAccuracy,
       averageTime,
       hintsUsed,
-      completedAt: status === 'completed' ? now : existingProgress?.completedAt,
-      preferredLanguage: 'en', // Could be from user preferences
-      studyMode: 'practice', // Could be from request
+      completedAt: status === "completed" ? now : existingProgress?.completedAt,
+      preferredLanguage: "en", // Could be from user preferences
+      studyMode: "practice", // Could be from request
     };
 
     await ddbDocClient.send(
       new PutCommand({
-        TableName: TABLE_NAMES.USER_PROGRESS,
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
         Item: progressData,
       })
     );
 
     // Update user's streak if lesson completed
-    if (status === 'completed') {
+    if (status === "completed") {
       await updateUserStreak(userId);
     }
 
     res.status(200).json({
       success: true,
-      message: status === 'completed' ? "Lesson completed successfully!" : "Progress updated",
+      message:
+        status === "completed"
+          ? "Lesson completed successfully!"
+          : "Progress updated",
       data: progressData,
     });
   } catch (error) {
@@ -274,7 +279,7 @@ async function updateUserStreak(userId: string): Promise<void> {
     // Get recent lesson completions to calculate streak
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.USER_PROGRESS,
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
         KeyConditionExpression: "PK = :pk",
         FilterExpression: "#status = :completed",
         ExpressionAttributeNames: {
@@ -290,27 +295,28 @@ async function updateUserStreak(userId: string): Promise<void> {
     );
 
     const completedLessons = (Items || []) as UserProgress[];
-    
+
     if (completedLessons.length === 0) return;
 
     // Calculate current streak (consecutive days with completed lessons)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     let currentStreak = 0;
     let checkDate = new Date(today);
-    
-    for (let i = 0; i < 30; i++) { // Check last 30 days
+
+    for (let i = 0; i < 30; i++) {
+      // Check last 30 days
       const dayStart = new Date(checkDate);
       const dayEnd = new Date(checkDate);
       dayEnd.setHours(23, 59, 59, 999);
-      
-      const hasLessonThisDay = completedLessons.some(lesson => {
+
+      const hasLessonThisDay = completedLessons.some((lesson) => {
         if (!lesson.completedAt) return false;
         const lessonDate = new Date(lesson.completedAt);
         return lessonDate >= dayStart && lessonDate <= dayEnd;
       });
-      
+
       if (hasLessonThisDay) {
         currentStreak++;
         checkDate.setDate(checkDate.getDate() - 1);
@@ -320,10 +326,10 @@ async function updateUserStreak(userId: string): Promise<void> {
     }
 
     // Update streak for recent lessons
-    const updatePromises = completedLessons.slice(0, 5).map(lesson =>
+    const updatePromises = completedLessons.slice(0, 5).map((lesson) =>
       ddbDocClient.send(
         new UpdateCommand({
-          TableName: TABLE_NAMES.USER_PROGRESS,
+          TableName: TABLE_NAMES.LEARNING_PROGRESS,
           Key: { PK: lesson.PK, SK: lesson.SK },
           UpdateExpression: "SET streak = :streak",
           ExpressionAttributeValues: {
@@ -343,15 +349,17 @@ async function updateUserStreak(userId: string): Promise<void> {
 // Get user statistics
 export const getUserStats = async (
   req: Request,
-  res: Response<ApiResponse<{
-    totalLessons: number;
-    completedLessons: number;
-    totalPoints: number;
-    averageAccuracy: number;
-    currentStreak: number;
-    totalTimeSpent: number;
-    favoriteUnit: string;
-  }>>
+  res: Response<
+    ApiResponse<{
+      totalLessons: number;
+      completedLessons: number;
+      totalPoints: number;
+      averageAccuracy: number;
+      currentStreak: number;
+      totalTimeSpent: number;
+      favoriteUnit: string;
+    }>
+  >
 ): Promise<void> => {
   try {
     const userId = req.id;
@@ -366,7 +374,7 @@ export const getUserStats = async (
 
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.USER_PROGRESS,
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
         KeyConditionExpression: "PK = :pk",
         ExpressionAttributeValues: {
           ":pk": `USER#${userId}`,
@@ -375,7 +383,7 @@ export const getUserStats = async (
     );
 
     const progressItems = (Items || []) as UserProgress[];
-    
+
     if (progressItems.length === 0) {
       res.status(200).json({
         success: true,
@@ -392,25 +400,36 @@ export const getUserStats = async (
       return;
     }
 
-    const completedLessons = progressItems.filter(p => p.status === 'completed');
-    const totalPoints = progressItems.reduce((sum, p) => sum + (p.totalPoints || 0), 0);
-    const totalTimeSpent = progressItems.reduce((sum, p) => sum + (p.timeSpent || 0), 0);
-    
-    const averageAccuracy = completedLessons.length > 0
-      ? completedLessons.reduce((sum, p) => sum + p.accuracy, 0) / completedLessons.length
-      : 0;
+    const completedLessons = progressItems.filter(
+      (p) => p.status === "completed"
+    );
+    const totalPoints = progressItems.reduce(
+      (sum, p) => sum + (p.totalPoints || 0),
+      0
+    );
+    const totalTimeSpent = progressItems.reduce(
+      (sum, p) => sum + (p.timeSpent || 0),
+      0
+    );
+
+    const averageAccuracy =
+      completedLessons.length > 0
+        ? completedLessons.reduce((sum, p) => sum + p.accuracy, 0) /
+          completedLessons.length
+        : 0;
 
     // Get current streak from most recent lesson
     const currentStreak = progressItems[0]?.streak || 0;
 
     // Find favorite unit (most lessons completed)
     const unitCounts: Record<string, number> = {};
-    completedLessons.forEach(lesson => {
+    completedLessons.forEach((lesson) => {
       unitCounts[lesson.unitId] = (unitCounts[lesson.unitId] || 0) + 1;
     });
-    
-    const favoriteUnit = Object.keys(unitCounts).reduce((a, b) => 
-      unitCounts[a] > unitCounts[b] ? a : b, "1"
+
+    const favoriteUnit = Object.keys(unitCounts).reduce(
+      (a, b) => (unitCounts[a] > unitCounts[b] ? a : b),
+      "1"
     );
 
     res.status(200).json({

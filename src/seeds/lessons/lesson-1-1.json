@@ -1,0 +1,82 @@
+{
+  "PK": "UNIT#1",
+  "SK": "LESSON#1",
+  "lessonId": "1.1",
+  "unitId": "1",
+  "lessonOrder": 1,
+  "title": "Hello & Goodbye",
+  "titleHindi": "नमस्ते और अलविदा",
+  "description": "रोज़ाना की बातचीत के लिए अंग्रेजी में बुनियादी अभिवादन और विदाई सीखें",
+  "descriptionHindi": "Learn basic greetings and farewells in English for daily conversations",
+  "difficulty": "beginner",
+  "estimatedTime": 7,
+  "prerequisites": [],
+  "vocabulary": [
+    {
+      "english": "Hello",
+      "hindi": "नमस्ते",
+      "pronunciation": "हैलो",
+      "example": "Hello, Priya! आज office में कैसा दिन था?"
+    },
+    {
+      "english": "Hi",
+      "hindi": "हाय",
+      "pronunciation": "हाय",
+      "example": "Hi Amit! कैसे हो?"
+    },
+    {
+      "english": "Goodbye",
+      "hindi": "अलविदा",
+      "pronunciation": "गुडबाय",
+      "example": "Goodbye, Uncle ji! कल मंदिर में मिलेंगे।"
+    },
+    {
+      "english": "Good morning",
+      "hindi": "सुप्रभात / नमस्कार",
+      "pronunciation": "गुड मॉर्निंग",
+      "example": "Good morning, Kavya! Meeting के लिए तैयार हो?"
+    },
+    {
+      "english": "Good evening",
+      "hindi": "शुभ संध्या / नमस्कार",
+      "pronunciation": "गुड इवनिंग",
+      "example": "Good evening, Suresh bhai! आज work कैसा रहा?"
+    }
+  ],
+  "exercises": [
+    {
+      "exerciseId": "1.1.1",
+      "type": "multiple_choice",
+      "question": "जब आप सुबह किसी से मिलते हैं तो अंग्रेजी में उनका अभिवादन कैसे करते हैं?",
+      "options": ["Good morning", "Good evening", "Goodbye", "Thank you"],
+      "correctAnswer": "Good morning",
+      "explanation": "Good morning का प्रयोग सूर्योदय से लेकर लगभग 12 बजे तक लोगों का अभिवादन करने के लिए किया जाता है।"
+    },
+    {
+      "exerciseId": "1.1.2",
+      "type": "fill_blank",
+      "sentence": "_____, Meera! आज तुम कैसी हो?",
+      "correctAnswer": "Hello",
+      "hint": "नमस्ते कहने के लिए अंग्रेजी में क्या कहते हैं?",
+      "options": ["Hello", "Goodbye", "Please", "Sorry"]
+    },
+    {
+      "exerciseId": "1.1.3",
+      "type": "translation",
+      "hindiText": "अलविदा! कल मिलेंगे।",
+      "options": ["Goodbye! See you tomorrow.", "Bye! We will meet tomorrow."],
+      "correctAnswer": "Goodbye! See you tomorrow.",
+      "hint": "याद रखें: Goodbye का प्रयोग जाते समय किया जाता है।",
+      "explanation": "'See you tomorrow' ज्यादा natural phrase है।"
+    }
+  ],
+  "supportedLanguages": ["en", "hi"],
+  "tags": ["greetings", "basic", "conversation"],
+  "competencyLevel": "A1",
+  "practiceType": "conversation",
+  "completionRate": 85.5,
+  "averageRating": 4.2,
+  "isActive": "active",
+  "createdAt": "2025-01-04T10:00:00Z",
+  "updatedAt": "2025-01-04T10:00:00Z"
+}

@@ -1,16 +1,16 @@
 // ts-server/src/controllers/courseProgress.controller.ts
 // Course progress tracking controller with TypeScript
 
-import { Request, Response } from 'express';
-import { GetCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
-import { ddbDocClient, TABLE_NAMES } from '../config/databaseClients.js';
+import { Request, Response } from "express";
+import { GetCommand, UpdateCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { ddbDocClient, TABLE_NAMES } from "../config/databaseClients.js";
 import {
   Course,
   Lecture,
   CourseProgress,
   UpdateProgressRequest,
   ApiResponse,
-} from '../types/index.js';
+} from "../types/index.js";
 
 interface CourseProgressResponse {
   courseDetails: Course & { lectures: Lecture[] };
@@ -42,14 +42,14 @@ export const getCourseProgress = async (
     const [courseResult, progressResult] = await Promise.all([
       ddbDocClient.send(
         new QueryCommand({
-          TableName: TABLE_NAMES.LMS,
+          TableName: TABLE_NAMES.COURSES,
           KeyConditionExpression: "PK = :pk",
           ExpressionAttributeValues: { ":pk": `COURSE#${courseId}` },
         })
       ),
       ddbDocClient.send(
         new GetCommand({
-          TableName: TABLE_NAMES.LMS,
+          TableName: TABLE_NAMES.COURSES,
           Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
         })
       ),
@@ -65,7 +65,9 @@ export const getCourseProgress = async (
       return;
     }
 
-    const courseMetadata = courseItems.find((item) => item.SK === "METADATA") as Course;
+    const courseMetadata = courseItems.find(
+      (item) => item.SK === "METADATA"
+    ) as Course;
     const lectures = courseItems.filter((item) =>
       item.SK.startsWith("LECTURE#")
     ) as Lecture[];
@@ -92,9 +94,10 @@ export const getCourseProgress = async (
       completedLectures = Object.values(lectureProgress).filter(Boolean).length;
     }
 
-    const progressPercentage = totalLectures > 0 
-      ? Math.round((completedLectures / totalLectures) * 100) 
-      : 0;
+    const progressPercentage =
+      totalLectures > 0
+        ? Math.round((completedLectures / totalLectures) * 100)
+        : 0;
 
     const responseData: CourseProgressResponse = {
       courseDetails,
@@ -120,7 +123,11 @@ export const getCourseProgress = async (
 
 // Update lecture progress
 export const updateLectureProgress = async (
-  req: Request<{ courseId: string; lectureId: string }, {}, UpdateProgressRequest>,
+  req: Request<
+    { courseId: string; lectureId: string },
+    {},
+    UpdateProgressRequest
+  >,
   res: Response<ApiResponse<CourseProgress>>
 ): Promise<void> => {
   try {
@@ -138,7 +145,7 @@ export const updateLectureProgress = async (
 
     // Update lecture progress
     const updateCommand = new UpdateCommand({
-      TableName: TABLE_NAMES.LMS,
+      TableName: TABLE_NAMES.COURSES,
       Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
       UpdateExpression: `
         SET 
@@ -164,7 +171,9 @@ export const updateLectureProgress = async (
       ReturnValues: "ALL_NEW",
     });
 
-    const { Attributes: updatedProgress } = await ddbDocClient.send(updateCommand);
+    const { Attributes: updatedProgress } = await ddbDocClient.send(
+      updateCommand
+    );
 
     if (!updatedProgress) {
       res.status(500).json({
@@ -176,29 +185,31 @@ export const updateLectureProgress = async (
 
     // Check if course is completed
     const lectureProgress = updatedProgress.lectureProgress || {};
-    
+
     // Get total lectures count
     const { Items: courseItems } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         KeyConditionExpression: "PK = :pk",
         ExpressionAttributeValues: { ":pk": `COURSE#${courseId}` },
       })
     );
 
-    const totalLectures = courseItems?.filter(item => 
-      item.SK.startsWith("LECTURE#")
-    ).length || 0;
+    const totalLectures =
+      courseItems?.filter((item) => item.SK.startsWith("LECTURE#")).length || 0;
 
-    const completedLectures = Object.values(lectureProgress).filter(Boolean).length;
-    const isCompleted = totalLectures > 0 && completedLectures === totalLectures;
+    const completedLectures =
+      Object.values(lectureProgress).filter(Boolean).length;
+    const isCompleted =
+      totalLectures > 0 && completedLectures === totalLectures;
 
     // Update completion status if course is completed
     if (isCompleted && !updatedProgress.completed) {
       const completeCommand = new UpdateCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
-        UpdateExpression: "SET completed = :completed, completedAt = :completedAt, progressPercentage = :percentage",
+        UpdateExpression:
+          "SET completed = :completed, completedAt = :completedAt, progressPercentage = :percentage",
         ExpressionAttributeValues: {
           ":completed": true,
           ":completedAt": new Date().toISOString(),
@@ -207,8 +218,10 @@ export const updateLectureProgress = async (
         ReturnValues: "ALL_NEW",
       });
 
-      const { Attributes: finalProgress } = await ddbDocClient.send(completeCommand);
-      
+      const { Attributes: finalProgress } = await ddbDocClient.send(
+        completeCommand
+      );
+
       res.status(200).json({
         success: true,
         message: "Congratulations! Course completed!",
@@ -218,13 +231,14 @@ export const updateLectureProgress = async (
     }
 
     // Calculate and update progress percentage
-    const progressPercentage = totalLectures > 0 
-      ? Math.round((completedLectures / totalLectures) * 100) 
-      : 0;
+    const progressPercentage =
+      totalLectures > 0
+        ? Math.round((completedLectures / totalLectures) * 100)
+        : 0;
 
     if (progressPercentage !== updatedProgress.progressPercentage) {
       const percentageCommand = new UpdateCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
         UpdateExpression: "SET progressPercentage = :percentage",
         ExpressionAttributeValues: {
@@ -233,8 +247,10 @@ export const updateLectureProgress = async (
         ReturnValues: "ALL_NEW",
       });
 
-      const { Attributes: finalProgress } = await ddbDocClient.send(percentageCommand);
-      
+      const { Attributes: finalProgress } = await ddbDocClient.send(
+        percentageCommand
+      );
+
       res.status(200).json({
         success: true,
         message: "Progress updated successfully",
@@ -275,7 +291,7 @@ export const markCourseCompleted = async (
     }
 
     const updateCommand = new UpdateCommand({
-      TableName: TABLE_NAMES.LMS,
+      TableName: TABLE_NAMES.COURSES,
       Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
       UpdateExpression: `
         SET 
@@ -293,7 +309,9 @@ export const markCourseCompleted = async (
       ReturnValues: "ALL_NEW",
     });
 
-    const { Attributes: updatedProgress } = await ddbDocClient.send(updateCommand);
+    const { Attributes: updatedProgress } = await ddbDocClient.send(
+      updateCommand
+    );
 
     if (!updatedProgress) {
       res.status(500).json({
@@ -335,7 +353,7 @@ export const getUserProgress = async (
 
     const { Items } = await ddbDocClient.send(
       new QueryCommand({
-        TableName: TABLE_NAMES.LMS,
+        TableName: TABLE_NAMES.COURSES,
         KeyConditionExpression: "PK = :pk",
         FilterExpression: "begins_with(SK, :progressPrefix)",
         ExpressionAttributeValues: {

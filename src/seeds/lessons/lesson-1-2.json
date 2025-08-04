@@ -1,0 +1,61 @@
+{
+  "PK": "UNIT#1",
+  "SK": "LESSON#2",
+  "lessonId": "1.2",
+  "unitId": "1",
+  "lessonOrder": 2,
+  "title": "Please & Thank You",
+  "titleHindi": "कृपया और धन्यवाद",
+  "description": "विनम्रता से बात करने के लिए 'Please' और 'Thank you' का सही प्रयोग सीखें",
+  "descriptionHindi": "Learn proper usage of 'Please' and 'Thank you' for polite conversation",
+  "difficulty": "beginner",
+  "estimatedTime": 6,
+  "prerequisites": ["1.1"],
+  "vocabulary": [
+    {
+      "english": "Please",
+      "hindi": "कृपया / प्लीज़",
+      "pronunciation": "प्लीज़",
+      "example": "Please pass the salt, बहन जी।"
+    },
+    {
+      "english": "Thank you",
+      "hindi": "धन्यवाद / शुक्रिया",
+      "pronunciation": "थैंक यू",
+      "example": "Thank you for helping me, dost!"
+    },
+    {
+      "english": "Welcome",
+      "hindi": "स्वागत है",
+      "pronunciation": "वेलकम",
+      "example": "You're welcome! Koi baat nahi."
+    }
+  ],
+  "exercises": [
+    {
+      "exerciseId": "1.2.1",
+      "type": "multiple_choice",
+      "question": "जब आप किसी से कुछ मांगते हैं तो कौन सा शब्द जोड़ते हैं?",
+      "options": ["Please", "Sorry", "Excuse me", "Hello"],
+      "correctAnswer": "Please",
+      "explanation": "'Please' का प्रयोग विनम्रता से कुछ मांगने के लिए किया जाता है।"
+    },
+    {
+      "exerciseId": "1.2.2",
+      "type": "fill_blank",
+      "sentence": "_____ you for the delicious खाना!",
+      "correctAnswer": "Thank",
+      "hint": "धन्यवाद कहने के लिए कौन सा शब्द प्रयोग करते हैं?",
+      "options": ["Thank", "Please", "Sorry", "Welcome"]
+    }
+  ],
+  "supportedLanguages": ["en", "hi"],
+  "tags": ["politeness", "basic", "manners"],
+  "competencyLevel": "A1",
+  "practiceType": "conversation",
+  "completionRate": 90.2,
+  "averageRating": 4.5,
+  "isActive": "active",
+  "createdAt": "2025-01-04T10:30:00Z",
+  "updatedAt": "2025-01-04T10:30:00Z"
+}
