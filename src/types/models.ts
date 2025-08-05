@@ -119,6 +119,19 @@ export interface Lecture {
   difficulty?: string;
 }
 
+// New flat progress record structure - no nested maps
+export interface LectureProgress {
+  PK: string; // USER#{userId}#COURSE#{courseId}
+  SK: string; // LECTURE#{lectureId}
+  userId: string;
+  courseId: string;
+  lectureId: string;
+  completed: boolean;
+  viewedAt: string;
+  timeSpent?: number;
+}
+
+// Legacy interface for backward compatibility - will be removed
 export interface CourseProgress {
   PK: string; // USER#{userId}
   SK: string; // PROGRESS#{courseId}

@@ -2,7 +2,7 @@
 // Course progress tracking controller with TypeScript
 
 import { Request, Response } from "express";
-import { GetCommand, UpdateCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { ddbDocClient, TABLE_NAMES } from "../config/databaseClients.js";
 import {
   Course,
@@ -21,7 +21,7 @@ interface CourseProgressResponse {
   currentLectureId?: string;
 }
 
-// Get course progress for a user
+// Get course progress for a user with flat record structure
 export const getCourseProgress = async (
   req: Request<{ courseId: string }>,
   res: Response<ApiResponse<CourseProgressResponse>>
@@ -40,6 +40,7 @@ export const getCourseProgress = async (
 
     // Fetch course structure and user progress in parallel
     const [courseResult, progressResult] = await Promise.all([
+      // Get course details
       ddbDocClient.send(
         new QueryCommand({
           TableName: TABLE_NAMES.COURSES,
@@ -47,12 +48,17 @@ export const getCourseProgress = async (
           ExpressionAttributeValues: { ":pk": `COURSE#${courseId}` },
         })
       ),
+      // Get user's lecture progress for this course
       ddbDocClient.send(
-        new GetCommand({
+        new QueryCommand({
           TableName: TABLE_NAMES.COURSES,
-          Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+          ExpressionAttributeValues: {
+            ":pk": `USER#${userId}#COURSE#${courseId}`,
+            ":sk": "LECTURE#"
+          }
         })
-      ),
+      )
     ]);
 
     // Assemble course details
@@ -82,18 +88,23 @@ export const getCourseProgress = async (
 
     const courseDetails = { ...courseMetadata, lectures };
 
-    // Get progress data
-    const courseProgress = progressResult.Item as CourseProgress | undefined;
+    // Convert flat progress records to progress map
+    const progressItems = progressResult.Items || [];
+    const progress: Record<string, boolean> = {};
+    let totalTimeSpent = 0;
+    let currentLectureId: string | undefined;
+
+    progressItems.forEach(item => {
+      progress[item.lectureId] = item.completed;
+      totalTimeSpent += item.timeSpent || 0;
+      if (item.completed) {
+        currentLectureId = item.lectureId; // Last completed lecture
+      }
+    });
 
     // Calculate progress percentage
     const totalLectures = lectures.length;
-    let completedLectures = 0;
-    const lectureProgress = courseProgress?.lectureProgress || {};
-
-    if (totalLectures > 0) {
-      completedLectures = Object.values(lectureProgress).filter(Boolean).length;
-    }
-
+    const completedLectures = Object.values(progress).filter(Boolean).length;
     const progressPercentage =
       totalLectures > 0
         ? Math.round((completedLectures / totalLectures) * 100)
@@ -101,11 +112,11 @@ export const getCourseProgress = async (
 
     const responseData: CourseProgressResponse = {
       courseDetails,
-      progress: lectureProgress,
-      completed: courseProgress?.completed || false,
+      progress,
+      completed: totalLectures > 0 && completedLectures === totalLectures,
       progressPercentage,
-      totalTimeSpent: courseProgress?.totalTimeSpent || 0,
-      currentLectureId: courseProgress?.currentLectureId,
+      totalTimeSpent,
+      currentLectureId,
     };
 
     res.status(200).json({
@@ -121,18 +132,18 @@ export const getCourseProgress = async (
   }
 };
 
-// Update lecture progress
+// Update lecture progress with flat record structure
 export const updateLectureProgress = async (
   req: Request<
     { courseId: string; lectureId: string },
     {},
     UpdateProgressRequest
   >,
-  res: Response<ApiResponse<CourseProgress>>
+  res: Response<ApiResponse<any>>
 ): Promise<void> => {
   try {
     const { courseId, lectureId } = req.params;
-    const { completed, timeSpent = 0 } = req.body;
+    const { completed = true, timeSpent = 0 } = req.body;
     const userId = req.id;
 
     if (!userId) {
@@ -143,126 +154,32 @@ export const updateLectureProgress = async (
       return;
     }
 
-    // Update lecture progress
-    const updateCommand = new UpdateCommand({
+    // Simple flat record - no nested maps, no path overlap issues
+    await ddbDocClient.send(new PutCommand({
       TableName: TABLE_NAMES.COURSES,
-      Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
-      UpdateExpression: `
-        SET 
-          lectureProgress.#lectureId = :completed,
-          lastAccessed = :timestamp,
-          currentLectureId = :currentLectureId,
-          totalTimeSpent = if_not_exists(totalTimeSpent, :zero) + :timeSpent,
-          userId = if_not_exists(userId, :userId),
-          courseId = if_not_exists(courseId, :courseId)
-      `,
-      ExpressionAttributeNames: {
-        "#lectureId": lectureId,
-      },
-      ExpressionAttributeValues: {
-        ":completed": completed,
-        ":timestamp": new Date().toISOString(),
-        ":currentLectureId": lectureId,
-        ":timeSpent": timeSpent,
-        ":zero": 0,
-        ":userId": userId,
-        ":courseId": courseId,
-      },
-      ReturnValues: "ALL_NEW",
-    });
-
-    const { Attributes: updatedProgress } = await ddbDocClient.send(
-      updateCommand
-    );
-
-    if (!updatedProgress) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to update progress",
-      });
-      return;
-    }
-
-    // Check if course is completed
-    const lectureProgress = updatedProgress.lectureProgress || {};
-
-    // Get total lectures count
-    const { Items: courseItems } = await ddbDocClient.send(
-      new QueryCommand({
-        TableName: TABLE_NAMES.COURSES,
-        KeyConditionExpression: "PK = :pk",
-        ExpressionAttributeValues: { ":pk": `COURSE#${courseId}` },
-      })
-    );
-
-    const totalLectures =
-      courseItems?.filter((item) => item.SK.startsWith("LECTURE#")).length || 0;
-
-    const completedLectures =
-      Object.values(lectureProgress).filter(Boolean).length;
-    const isCompleted =
-      totalLectures > 0 && completedLectures === totalLectures;
-
-    // Update completion status if course is completed
-    if (isCompleted && !updatedProgress.completed) {
-      const completeCommand = new UpdateCommand({
-        TableName: TABLE_NAMES.COURSES,
-        Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
-        UpdateExpression:
-          "SET completed = :completed, completedAt = :completedAt, progressPercentage = :percentage",
-        ExpressionAttributeValues: {
-          ":completed": true,
-          ":completedAt": new Date().toISOString(),
-          ":percentage": 100,
-        },
-        ReturnValues: "ALL_NEW",
-      });
-
-      const { Attributes: finalProgress } = await ddbDocClient.send(
-        completeCommand
-      );
-
-      res.status(200).json({
-        success: true,
-        message: "Congratulations! Course completed!",
-        data: finalProgress as CourseProgress,
-      });
-      return;
-    }
-
-    // Calculate and update progress percentage
-    const progressPercentage =
-      totalLectures > 0
-        ? Math.round((completedLectures / totalLectures) * 100)
-        : 0;
-
-    if (progressPercentage !== updatedProgress.progressPercentage) {
-      const percentageCommand = new UpdateCommand({
-        TableName: TABLE_NAMES.COURSES,
-        Key: { PK: `USER#${userId}`, SK: `PROGRESS#${courseId}` },
-        UpdateExpression: "SET progressPercentage = :percentage",
-        ExpressionAttributeValues: {
-          ":percentage": progressPercentage,
-        },
-        ReturnValues: "ALL_NEW",
-      });
-
-      const { Attributes: finalProgress } = await ddbDocClient.send(
-        percentageCommand
-      );
-
-      res.status(200).json({
-        success: true,
-        message: "Progress updated successfully",
-        data: finalProgress as CourseProgress,
-      });
-      return;
-    }
+      Item: {
+        PK: `USER#${userId}#COURSE#${courseId}`,
+        SK: `LECTURE#${lectureId}`,
+        userId,
+        courseId,
+        lectureId,
+        completed,
+        viewedAt: new Date().toISOString(),
+        timeSpent
+      }
+    }));
 
     res.status(200).json({
       success: true,
       message: "Progress updated successfully",
-      data: updatedProgress as CourseProgress,
+      data: {
+        userId,
+        courseId,
+        lectureId,
+        completed,
+        viewedAt: new Date().toISOString(),
+        timeSpent
+      }
     });
   } catch (error) {
     console.error("Update lecture progress error:", error);
