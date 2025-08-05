@@ -14,6 +14,7 @@ import {
   ddbDocClient,
   pgPool,
   TABLE_NAMES,
+  query,
 } from "../config/databaseClients.js";
 import {
   uploadImageToCloudinary,
@@ -243,13 +244,16 @@ export const editCourse = async (
   }
 };
 
-// Get course by ID
+// Get course by ID with purchase status check
 export const getCourseById = async (
   req: Request<{ courseId: string }>,
   res: Response<ApiResponse<{ course: Course; lectures: Lecture[] }>>
 ): Promise<void> => {
   try {
     const { courseId } = req.params;
+    const userId = req.id; // Get authenticated user ID (may be undefined)
+    
+    console.log(`🔍 getCourseById called - Course: ${courseId}, User: ${userId || 'unauthenticated'}`);
 
     // Get course and all its lectures
     const { Items } = await ddbDocClient.send(
@@ -284,9 +288,50 @@ export const getCourseById = async (
       return;
     }
 
+    // Check purchase status and creator access
+    let hasPurchased = false;
+    let isCreator = false;
+
+    if (userId) {
+      // Check if user is the creator
+      isCreator = course.creator === userId;
+
+      if (!isCreator) {
+        try {
+          // Check purchase status in PostgreSQL
+          const purchaseQuery = `
+            SELECT status FROM purchases 
+            WHERE user_id = $1 AND course_id = $2 AND status = 'completed'
+          `;
+          const purchaseResult = await query(purchaseQuery, [userId, courseId]);
+          hasPurchased = purchaseResult.rows.length > 0;
+          
+          console.log(`🔍 Purchase check for user ${userId}, course ${courseId}: ${hasPurchased}`);
+        } catch (purchaseError) {
+          console.error("Error checking purchase status:", purchaseError);
+          hasPurchased = false;
+        }
+      } else {
+        hasPurchased = true; // Creator has access
+        console.log(`👨‍🏫 User ${userId} is creator of course ${courseId}`);
+      }
+    }
+
+    // Add purchase status to course object
+    const courseWithStatus = {
+      ...course,
+      purchased: hasPurchased,
+      isCreator,
+    };
+
+    console.log(`📋 Course response - purchased: ${hasPurchased}, isCreator: ${isCreator}`);
+
     res.status(200).json({
       success: true,
-      data: { course, lectures },
+      data: { 
+        course: courseWithStatus, 
+        lectures 
+      },
     });
   } catch (error) {
     console.error("Get course error:", error);

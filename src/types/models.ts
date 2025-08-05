@@ -95,6 +95,10 @@ export interface Course {
   GSI2SK?: string; // {category}#{price}
   GSI3PK?: string; // CONTENT#{contentType}#{primaryLanguage}
   GSI3SK?: string; // {difficulty}#{estimatedDuration}
+  
+  // Purchase status fields (added dynamically by getCourseById)
+  purchased?: boolean;
+  isCreator?: boolean;
 }
 
 export interface Lecture {

@@ -15,6 +15,7 @@ import {
 } from '../controllers/course.controller.js';
 import isAuthenticated from '../middleware/isAuthenticated.js';
 import isInstructor from '../middleware/isInstructor.js';
+import optionalAuth from '../middleware/optionalAuth.js';
 
 const router = express.Router();
 
@@ -37,7 +38,7 @@ const upload = multer({
 // Public routes
 router.route('/published-courses').get(getPublishedCourses);
 router.route('/search').get(getPublishedCourses); // Search uses same controller with query filters
-router.route('/:courseId').get(getCourseById);
+router.route('/:courseId').get(optionalAuth, getCourseById); // Add optional auth to check purchase status
 
 // Protected routes for instructors
 router.route('/').post(isAuthenticated, isInstructor, createCourse);
