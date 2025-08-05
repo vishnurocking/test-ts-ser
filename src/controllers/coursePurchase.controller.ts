@@ -167,12 +167,8 @@ export const createRazorpayOrder = async (
 
       res.status(200).json({
         success: true,
+        order: order,  // Return full Razorpay order object to match frontend expectation
         message: "Order created successfully",
-        data: {
-          orderId: order.id,
-          amount: finalAmount,
-          courseId,
-        },
       });
     } catch (error) {
       await pgClient.query("ROLLBACK");
