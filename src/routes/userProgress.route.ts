@@ -8,6 +8,8 @@ import {
   getUserProgressByUnit,
   updateLessonProgress,
   getUserStats,
+  startLesson,
+  completeLesson,
 } from '../controllers/userProgress.controller.js';
 import isAuthenticated from '../middleware/isAuthenticated.js';
 
@@ -21,6 +23,8 @@ router.route('/').get(getUserProgressAll);
 router.route('/stats').get(getUserStats);
 router.route('/lesson/:lessonId').get(getUserProgressByLesson);
 router.route('/lesson/:lessonId/update').put(updateLessonProgress);
+router.route('/lesson/:lessonId/start').post(startLesson);
+router.route('/lesson/:lessonId/complete').post(completeLesson);
 router.route('/unit/:unitId').get(getUserProgressByUnit);
 
 export default router;

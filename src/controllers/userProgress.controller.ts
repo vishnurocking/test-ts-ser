@@ -347,6 +347,191 @@ async function updateUserStreak(userId: string): Promise<void> {
 }
 
 // Get user statistics
+// Start a lesson
+export const startLesson = async (
+  req: Request,
+  res: Response<ApiResponse>
+): Promise<void> => {
+  try {
+    const userId = req.id;
+    const { lessonId } = req.params;
+    const { unitId } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+      return;
+    }
+
+    if (!lessonId || !unitId) {
+      res.status(400).json({
+        success: false,
+        message: "Lesson ID and Unit ID are required",
+      });
+      return;
+    }
+
+    const now = new Date().toISOString();
+
+    // Create initial progress record
+    const progressData: UserProgress = {
+      PK: `USER#${userId}`,
+      SK: `LESSON#${lessonId}`,
+      userId,
+      lessonId,
+      unitId,
+      status: "in_progress",
+      accuracy: 0,
+      timeSpent: 0,
+      attempts: 0,
+      exerciseResults: [],
+      lastAccessed: now,
+      createdAt: now,
+      streak: 0,
+      totalPoints: 0,
+      bestAccuracy: 0,
+      averageTime: 0,
+      hintsUsed: 0,
+      preferredLanguage: "en",
+      studyMode: "practice",
+    };
+
+    await ddbDocClient.send(
+      new PutCommand({
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
+        Item: progressData,
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Lesson started successfully",
+      data: progressData,
+    });
+  } catch (error) {
+    console.error("Start lesson error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to start lesson",
+    });
+  }
+};
+
+// Complete a lesson
+export const completeLesson = async (
+  req: Request,
+  res: Response<ApiResponse>
+): Promise<void> => {
+  try {
+    const userId = req.id;
+    const { lessonId } = req.params;
+    const { exerciseResults, timeSpent } = req.body;
+
+    if (!userId) {
+      res.status(401).json({
+        success: false,
+        message: "User not authenticated",
+      });
+      return;
+    }
+
+    if (!lessonId || !exerciseResults || timeSpent === undefined) {
+      res.status(400).json({
+        success: false,
+        message: "Missing required data: exerciseResults and timeSpent",
+      });
+      return;
+    }
+
+    // Get existing progress
+    const { Item: existingProgress } = await ddbDocClient.send(
+      new GetCommand({
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
+        Key: {
+          PK: `USER#${userId}`,
+          SK: `LESSON#${lessonId}`,
+        },
+      })
+    );
+
+    if (!existingProgress) {
+      res.status(404).json({
+        success: false,
+        message: "Lesson progress not found. Please start the lesson first.",
+      });
+      return;
+    }
+
+    const existing = existingProgress as UserProgress;
+    const now = new Date().toISOString();
+
+    // Calculate metrics - handle both legacy 'correct' and new 'isCorrect' properties
+    const correctAnswers = exerciseResults.filter((r: any) => r.isCorrect || r.correct).length;
+    const totalExercises = exerciseResults.length;
+    const accuracy = totalExercises > 0 ? correctAnswers / totalExercises : 0;
+    const passed = accuracy >= 0.58; // 58% to pass internally
+    
+    // Calculate status based on accuracy (matching JavaScript legacy logic)
+    const status = accuracy >= 0.58 ? "completed" : "needs_review";
+    
+    // Calculate points
+    const basePoints = correctAnswers * 10;
+    const accuracyBonus = accuracy >= 0.8 ? 20 : accuracy >= 0.6 ? 10 : 0;
+    const totalPoints = basePoints + accuracyBonus;
+
+    // Update progress
+    const updatedProgress: UserProgress = {
+      ...existing,
+      status: status,
+      accuracy,
+      timeSpent,
+      attempts: (existing.attempts || 0) + 1,
+      exerciseResults,
+      lastAccessed: now,
+      completedAt: now,
+      totalPoints,
+      bestAccuracy: Math.max(existing.bestAccuracy || 0, accuracy),
+      averageTime: timeSpent / totalExercises,
+      hintsUsed: exerciseResults.reduce((sum: number, r: any) => sum + (r.hintsUsed || 0), 0),
+    };
+
+    await ddbDocClient.send(
+      new PutCommand({
+        TableName: TABLE_NAMES.LEARNING_PROGRESS,
+        Item: updatedProgress,
+      })
+    );
+
+    // Update user's streak
+    if (passed) {
+      await updateUserStreak(userId);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: passed ? "Lesson completed successfully!" : "Lesson completed. Try again to improve your score!",
+      result: {
+        passed,
+        accuracy: Math.round(accuracy * 100),
+        totalPoints,
+        needsReview: !passed,
+        minimumRequired: 60, // Display 60% to users
+        status,
+        totalExercises,
+        correctAnswers,
+      },
+    });
+  } catch (error) {
+    console.error("Complete lesson error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to complete lesson",
+    });
+  }
+};
+
 export const getUserStats = async (
   req: Request,
   res: Response<

@@ -14,7 +14,16 @@ const isAuthenticated = async (
 ): Promise<void> => {
   let client;
   try {
-    const token = req.cookies.token;
+    // Check both cookie and Authorization header
+    let token = req.cookies.token;
+    
+    // If no cookie token, check Authorization header
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      }
+    }
 
     if (!token) {
       res.status(401).json({
