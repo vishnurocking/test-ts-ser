@@ -1,26 +1,25 @@
 // ts-server/src/types/models.ts
-// Database model types for PostgreSQL and DynamoDB
-
-// PostgreSQL Models
+// Fixed User interface to match PostgreSQL schema exactly
 
 export interface User {
+  // Core identity fields (matching PostgreSQL schema)
   user_id: string;
   email: string;
   name: string;
   nickname?: string;
   google_id?: string;
   password?: string; // Hashed password
-  role: 'Learner' | 'Instructor';
+  role: "Learner" | "Instructor";
   enrolled_courses?: string[]; // Array of course IDs
-  
+
   // Gamification fields
   points: number;
   level: number;
   streak: number;
   last_login_date?: Date;
   language_preference?: string;
-  
-  // Enhanced fields (optional)
+
+  // Enhanced language learning fields
   mother_tongue?: string;
   primary_target_language?: string;
   proficiency_level?: string;
@@ -28,10 +27,14 @@ export interface User {
   timezone?: string;
   is_active?: boolean;
   onboarding_completed?: boolean;
-  
-  // Timestamps
-  created_at: Date;
-  updated_at: Date;
+
+  // Timestamps (FIXED - matching database schema)
+  created_at: Date; // Changed from created_date
+  updated_at: Date; // Changed from updated_date
+
+  // Frontend compatibility fields (optional)
+  id?: string; // Alias for user_id
+  photoUrl?: string; // For Google OAuth photos
 }
 
 export interface Purchase {
@@ -42,27 +45,26 @@ export interface Purchase {
   course_thumbnail?: string;
   amount: number;
   currency: string;
-  status: 'pending' | 'completed' | 'failed' | 'refunded';
-  
+  status: "pending" | "completed" | "failed" | "refunded";
+
   // Razorpay fields
   payment_id?: string;
   order_id?: string;
   payment_signature?: string;
-  
-  // Enhanced fields (optional)
+
+  // Enhanced fields
   payment_method?: string;
   processing_fee?: number;
   refund_amount?: number;
   content_type?: string;
-  
-  // Timestamps
+
+  // Timestamps (matching database schema)
   created_at: Date;
   updated_at: Date;
   completed_at?: Date;
 }
 
 // DynamoDB Models
-
 export interface Course {
   PK: string; // COURSE#{courseId}
   SK: string; // METADATA
@@ -72,14 +74,14 @@ export interface Course {
   description?: string;
   category: string;
   courseLevel: string;
-  coursePrice: number | string; // Handle both number and string for backward compatibility
+  coursePrice: number | string;
   courseThumbnail?: string;
   courseThumbnailPublicId?: string;
   creator: string; // User UUID from PostgreSQL
-  isPublished: boolean | string; // Handle both boolean and string for backward compatibility
+  isPublished: boolean | string;
   createdAt: string;
-  
-  // Enhanced fields (optional)
+
+  // Enhanced fields
   primaryLanguage?: string;
   supportedLanguages?: string[];
   contentType?: string;
@@ -87,16 +89,16 @@ export interface Course {
   estimatedDuration?: number;
   tags?: string[];
   isActive?: boolean;
-  
+
   // GSI attributes
-  GSI1PK?: string; // USER#{userId}
-  GSI1SK?: string; // COURSE#{courseId}
-  GSI2PK?: string; // PUBLISHED#{isPublished}
-  GSI2SK?: string; // {category}#{price}
-  GSI3PK?: string; // CONTENT#{contentType}#{primaryLanguage}
-  GSI3SK?: string; // {difficulty}#{estimatedDuration}
-  
-  // Purchase status fields (added dynamically by getCourseById)
+  GSI1PK?: string;
+  GSI1SK?: string;
+  GSI2PK?: string;
+  GSI2SK?: string;
+  GSI3PK?: string;
+  GSI3SK?: string;
+
+  // Purchase status fields (added dynamically)
   purchased?: boolean;
   isCreator?: boolean;
 }
@@ -110,142 +112,227 @@ export interface Lecture {
   publicId?: string;
   isPreviewFree: boolean;
   createdAt: string;
-  
-  // Enhanced fields (optional)
+
+  // Enhanced fields
   duration?: number;
   transcriptUrl?: string;
   subtitleUrls?: Record<string, string>;
-  viewCount?: number;
-  difficulty?: string;
+  notes?: string;
+  resources?: Array<{
+    title: string;
+    url: string;
+    type: string;
+  }>;
+
+  // Progress tracking (added dynamically)
+  watched?: boolean;
+  progress?: number; // Percentage watched
 }
 
-// New flat progress record structure - no nested maps
-export interface LectureProgress {
-  PK: string; // USER#{userId}#COURSE#{courseId}
-  SK: string; // LECTURE#{lectureId}
-  userId: string;
-  courseId: string;
-  lectureId: string;
-  completed: boolean;
-  viewedAt: string;
-  timeSpent?: number;
-}
-
-// Legacy interface for backward compatibility - will be removed
-export interface CourseProgress {
-  PK: string; // USER#{userId}
-  SK: string; // PROGRESS#{courseId}
-  userId: string;
-  courseId: string;
-  lectureProgress: Record<string, boolean>;
-  completed: boolean;
-  lastAccessed: string;
-  
-  // Enhanced fields (optional)
-  progressPercentage?: number;
-  totalTimeSpent?: number;
-  currentLectureId?: string;
-  completedAt?: string;
-  rating?: number;
-  studyStreak?: number;
-}
-
+// Language Learning Models (DynamoDB)
 export interface FreeLesson {
   PK: string; // UNIT#{unitId}
-  SK: string; // LESSON#{lessonOrder}
+  SK: string; // LESSON#{order}
   lessonId: string;
   unitId: string;
-  lessonOrder: number;
   title: string;
-  titleHindi?: string;
-  description?: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
-  estimatedTime: number;
-  prerequisites?: string[];
-  vocabulary?: VocabularyItem[];
-  exercises?: Exercise[];
-  isActive: 'active' | 'inactive';
-  createdAt: string;
-  updatedAt: string;
-  
-  // Enhanced fields (optional)
-  supportedLanguages?: string[];
+  order: number;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  competencyLevel: string; // A1, A2, B1, B2, C1, C2
+  estimatedTime: number; // in minutes
+
+  // Content
+  vocabulary: VocabularyItem[];
+  exercises: Exercise[];
+
+  // Metadata
+  isActive: boolean;
+  primaryLanguage: string;
+  targetLanguage: string;
   tags?: string[];
-  competencyLevel?: string;
-  practiceType?: string;
-  audioUrl?: string;
-  imageUrl?: string;
-  completionRate?: number;
-  averageRating?: number;
+  createdAt: string;
+
+  // GSI attributes for queries
+  ActiveLessonsIndex?: string;
+  LanguageLevelIndex?: string;
 }
 
 export interface VocabularyItem {
   english: string;
   hindi: string;
   pronunciation?: string;
-  example?: string;
-  
-  // Enhanced fields (optional)
   audioUrl?: string;
   imageUrl?: string;
-  difficulty?: string;
-  frequency?: string;
+  example?: {
+    english: string;
+    hindi: string;
+  };
 }
 
 export interface Exercise {
   exerciseId: string;
-  type: 'multiple_choice' | 'fill_blank' | 'translation';
+  type: "mcq" | "fillBlank" | "translation" | "listening" | "pronunciation";
   question: string;
-  sentence?: string;
-  hindiText?: string;
+
+  // MCQ fields
   options?: string[];
   correctAnswer: string | number;
+
+  // Fill in the blank fields
+  sentence?: string;
+  blanks?: string[];
+
+  // Translation fields
+  englishText?: string;
+  hindiText?: string;
+
+  // Audio fields
+  audioUrl?: string;
+
+  // Metadata
+  difficulty: number; // 1-10
+  points: number;
+  timeLimit?: number; // seconds
+  hints?: string[];
   explanation?: string;
-  hint?: string;
-  
-  // Enhanced fields (optional)
-  difficulty?: number;
-  timeLimit?: number;
-  points?: number;
-  audioQuestion?: string;
-  audioOptions?: string[];
 }
 
+// User Progress Models (DynamoDB)
 export interface UserProgress {
   PK: string; // USER#{userId}
   SK: string; // LESSON#{lessonId}
   userId: string;
   lessonId: string;
   unitId: string;
-  status: 'completed' | 'in_progress' | 'failed';
-  accuracy: number;
-  timeSpent: number;
+
+  // Progress data
+  completed: boolean;
+  accuracy: number; // percentage
+  timeSpent: number; // seconds
   attempts: number;
+  bestScore: number; // percentage
+
+  // Exercise results
   exerciseResults: ExerciseResult[];
-  lastAccessed: string;
-  createdAt: string;
-  
-  // Enhanced fields (optional)
-  streak?: number;
-  totalPoints?: number;
-  bestAccuracy?: number;
-  averageTime?: number;
-  hintsUsed?: number;
+
+  // Timestamps
+  startedAt: string;
   completedAt?: string;
-  preferredLanguage?: string;
-  studyMode?: string;
+  lastAttemptAt: string;
+
+  // GSI attributes
+  UserUnitIndex?: string;
+  UserStreakIndex?: string;
 }
 
 export interface ExerciseResult {
   exerciseId: string;
   userAnswer: string | number;
   correct: boolean;
-  timeSpent: number;
+  timeSpent: number; // seconds
   attempts: number;
-  
-  // Enhanced fields (optional)
-  hintsUsed?: number;
-  difficulty?: number;
-  confidence?: number;
-  timestamp?: string;
+  hintsUsed: number;
+  confidence?: number; // 1-5 scale
+  difficulty?: number; // perceived difficulty 1-5
+  timestamp: string;
 }
+
+// Course Progress Models (DynamoDB)
+export interface CourseProgress {
+  PK: string; // USER#{userId}
+  SK: string; // COURSE#{courseId}
+  userId: string;
+  courseId: string;
+
+  // Progress tracking
+  lecturesWatched: string[];
+  totalLectures: number;
+  progressPercentage: number;
+  completed: boolean;
+
+  // Timestamps
+  enrolledAt: string;
+  lastAccessedAt: string;
+  completedAt?: string;
+
+  // Metadata
+  timeSpent: number; // total seconds
+  certificateIssued?: boolean;
+  rating?: number; // 1-5 stars
+  review?: string;
+}
+
+// API Response Types
+export interface ApiResponse<T = any> {
+  success: boolean;
+  message: string;
+  data?: T;
+}
+
+export interface AuthResponse extends ApiResponse<User> {
+  user?: User;
+  token?: string;
+  sessionInfo?: {
+    expiresAt: string;
+    browserInfo: string;
+  };
+}
+
+// Request Types
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  role?: "Learner" | "Instructor";
+}
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface GoogleLoginRequest {
+  credential: string; // Google ID token
+}
+
+export interface UpdateProfileRequest {
+  name?: string;
+  nickname?: string;
+  language_preference?: string;
+  mother_tongue?: string;
+  primary_target_language?: string;
+  daily_time_commitment?: number;
+  timezone?: string;
+}
+
+export interface CreateCourseRequest {
+  courseTitle: string;
+  category: string;
+  subTitle?: string;
+  description?: string;
+  courseLevel?: string;
+  coursePrice?: number;
+}
+
+export interface UpdateCourseRequest {
+  courseTitle?: string;
+  subTitle?: string;
+  description?: string;
+  category?: string;
+  courseLevel?: string;
+  coursePrice?: number;
+  courseThumbnail?: string;
+  isPublished?: boolean;
+}
+
+// Utility Types
+export type UserRole = "Learner" | "Instructor";
+export type PurchaseStatus = "pending" | "completed" | "failed" | "refunded";
+export type ExerciseType =
+  | "mcq"
+  | "fillBlank"
+  | "translation"
+  | "listening"
+  | "pronunciation";
+export type DifficultyLevel = "beginner" | "intermediate" | "advanced";
+export type CompetencyLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
