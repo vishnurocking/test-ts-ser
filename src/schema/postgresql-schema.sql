@@ -1,11 +1,11 @@
 -- ts-server/src/schema/postgresql-schema.sql
 -- PostgreSQL schema for hybrid_db database
--- Enhanced schema with updated database name for TypeScript backend
+-- UPDATED: Added photo_url column for Google profile pictures
 
 -- Extensions for enhanced features
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Enhanced Users table
+-- Enhanced Users table - UPDATED with photo_url
 CREATE TABLE users (
     -- Core identity fields
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -17,9 +17,9 @@ CREATE TABLE users (
     role VARCHAR(50) NOT NULL DEFAULT 'Learner' CHECK (role IN ('Learner', 'Instructor')),
     enrolled_courses TEXT[], -- Array of course IDs from DynamoDB
     
-    -- Profile fields
-    photo_url TEXT, 
-
+    -- ADDED: Profile picture support
+    photo_url TEXT, -- URL to user profile picture from Google OAuth or uploaded image
+    
     -- Gamification fields
     points INTEGER DEFAULT 0,
     level INTEGER DEFAULT 1,
@@ -83,6 +83,9 @@ CREATE INDEX idx_users_active ON users(is_active) WHERE is_active = true;
 CREATE INDEX idx_users_language_learning ON users(mother_tongue, primary_target_language, proficiency_level) WHERE is_active = true;
 CREATE INDEX idx_users_gamification ON users(points, level, streak) WHERE is_active = true;
 
+-- ADDED: Performance index for photo_url lookups
+CREATE INDEX idx_users_photo_url ON users(photo_url) WHERE photo_url IS NOT NULL;
+
 -- Performance indexes for purchases table
 CREATE INDEX idx_purchases_user_id ON purchases(user_id);
 CREATE INDEX idx_purchases_course_id ON purchases(course_id);
@@ -124,6 +127,7 @@ SELECT
     mother_tongue,
     primary_target_language,
     proficiency_level,
+    photo_url, -- ADDED: Include photo URL in view
     created_at
 FROM users 
 WHERE role = 'Learner' AND is_active = true;
@@ -133,6 +137,7 @@ SELECT
     p.purchase_id,
     u.email,
     u.name,
+    u.photo_url, -- ADDED: Include user photo URL
     p.course_id,
     p.course_title,
     p.amount,
@@ -145,7 +150,7 @@ JOIN users u ON p.user_id = u.user_id
 WHERE p.status = 'completed'
 ORDER BY p.completed_at DESC;
 
--- Function to get user's learning statistics
+-- Function to get user's learning statistics - UPDATED
 CREATE OR REPLACE FUNCTION get_user_learning_stats(user_uuid UUID)
 RETURNS TABLE(
     total_purchases INTEGER,
@@ -154,7 +159,8 @@ RETURNS TABLE(
     language_lessons INTEGER,
     current_streak INTEGER,
     total_points INTEGER,
-    current_level INTEGER
+    current_level INTEGER,
+    has_profile_picture BOOLEAN -- ADDED: Profile picture indicator
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -165,11 +171,12 @@ BEGIN
         COUNT(CASE WHEN p.content_type = 'language_lesson' THEN 1 END)::INTEGER as language_lessons,
         u.streak as current_streak,
         u.points as total_points,
-        u.level as current_level
+        u.level as current_level,
+        (u.photo_url IS NOT NULL) as has_profile_picture -- ADDED: Check if user has photo
     FROM users u
     LEFT JOIN purchases p ON u.user_id = p.user_id AND p.status = 'completed'
     WHERE u.user_id = user_uuid
-    GROUP BY u.user_id, u.streak, u.points, u.level;
+    GROUP BY u.user_id, u.streak, u.points, u.level, u.photo_url;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -199,3 +206,51 @@ BEGIN
     RETURN current_streak;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ADDED: Function to validate and cleanup profile picture URLs
+CREATE OR REPLACE FUNCTION cleanup_invalid_photo_urls()
+RETURNS INTEGER AS $$
+DECLARE
+    cleanup_count INTEGER := 0;
+BEGIN
+    -- Clear obviously invalid photo URLs
+    UPDATE users 
+    SET photo_url = NULL 
+    WHERE photo_url IS NOT NULL 
+    AND (
+        photo_url = '' 
+        OR photo_url = 'null' 
+        OR photo_url = 'undefined'
+        OR LENGTH(photo_url) < 10
+        OR photo_url NOT LIKE 'http%'
+    );
+    
+    GET DIAGNOSTICS cleanup_count = ROW_COUNT;
+    
+    RETURN cleanup_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ADDED: Comments for documentation
+COMMENT ON TABLE users IS 'User accounts with authentication, profile, and gamification data';
+COMMENT ON COLUMN users.photo_url IS 'URL to user profile picture from Google OAuth or uploaded image';
+COMMENT ON COLUMN users.google_id IS 'Google OAuth unique identifier for the user';
+COMMENT ON COLUMN users.points IS 'Gamification points earned by user';
+COMMENT ON COLUMN users.streak IS 'Consecutive days of platform usage';
+
+COMMENT ON TABLE purchases IS 'Course purchase records with payment gateway integration';
+COMMENT ON COLUMN purchases.payment_signature IS 'Razorpay signature for payment verification';
+
+COMMENT ON INDEX idx_users_photo_url IS 'Performance index for users with profile pictures';
+
+-- ADDED: Initial data setup for development (optional)
+-- Uncomment the following if you want sample data
+
+/*
+-- Sample users for development testing
+INSERT INTO users (name, email, role, points, level, streak, photo_url) VALUES 
+    ('John Doe', 'john.doe@example.com', 'Learner', 150, 2, 5, 'https://lh3.googleusercontent.com/a/sample-photo-url'),
+    ('Jane Smith', 'jane.smith@example.com', 'Instructor', 300, 3, 10, NULL),
+    ('Google User', 'google.user@gmail.com', 'Learner', 75, 1, 3, 'https://lh3.googleusercontent.com/a/another-sample-url')
+ON CONFLICT (email) DO NOTHING;
+*/
