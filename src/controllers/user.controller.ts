@@ -1,5 +1,5 @@
 // ts-server/src/controllers/user.controller.ts
-// Fixed getUserProfile function with correct PostgreSQL column names
+// Updated with Google profile picture URL storage
 
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
@@ -16,7 +16,7 @@ import { OAuth2Client } from "google-auth-library";
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Get user profile - FIXED with correct column names
+// Get user profile - UPDATED to include photo_url
 export const getUserProfile = async (
   req: Request,
   res: Response<{ success: boolean; message: string; data?: User }>
@@ -40,10 +40,10 @@ export const getUserProfile = async (
 
     client = await pgPool.connect();
 
-    // Fetch fresh user data from database - FIXED COLUMN NAMES
+    // Fetch fresh user data from database - ADDED photo_url
     const userQuery = `
       SELECT 
-        user_id, name, email, role, nickname, 
+        user_id, name, email, role, nickname, photo_url,
         language_preference, mother_tongue, primary_target_language,
         daily_time_commitment, timezone, points, level, streak,
         created_at, updated_at, last_login_date
@@ -64,7 +64,7 @@ export const getUserProfile = async (
 
     const user = result.rows[0];
 
-    // Format user data for frontend
+    // Format user data for frontend - ADDED photoUrl mapping
     const userData: User = {
       id: user.user_id,
       user_id: user.user_id,
@@ -80,12 +80,16 @@ export const getUserProfile = async (
       points: user.points || 0,
       level: user.level || 1,
       streak: user.streak || 0,
-      created_at: user.created_at, // Fixed: now using created_at
-      updated_at: user.updated_at, // Fixed: now using updated_at
+      created_at: user.created_at,
+      updated_at: user.updated_at,
       last_login_date: user.last_login_date,
+      // ADDED: Include photo URL for frontend
+      photo_url: user.photo_url,
+      photoUrl: user.photo_url, // Frontend alias
     };
 
     console.log("✅ Profile loaded successfully for user:", user.user_id);
+    console.log("📸 Photo URL:", user.photo_url ? "Present" : "None");
 
     res.status(200).json({
       success: true,
@@ -105,7 +109,138 @@ export const getUserProfile = async (
   }
 };
 
-// Update user profile - Enhanced with correct column names
+// Google OAuth login - UPDATED to store profile picture
+export const googleLogin = async (
+  req: Request<{}, {}, GoogleLoginRequest>,
+  res: Response<AuthResponse>
+): Promise<void> => {
+  let client;
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      res.status(400).json({
+        success: false,
+        message: "Google credential is required.",
+      });
+      return;
+    }
+
+    // Verify Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+
+    if (!payload || !payload.email) {
+      res.status(400).json({
+        success: false,
+        message: "Invalid Google token.",
+      });
+      return;
+    }
+
+    // UPDATED: Extract picture URL from Google payload
+    const { email, name, picture, sub: googleId } = payload;
+
+    console.log("🔍 Google OAuth payload:");
+    console.log("- Email:", email);
+    console.log("- Name:", name);
+    console.log("- Picture URL:", picture);
+    console.log("- Google ID:", googleId);
+
+    client = await pgPool.connect();
+
+    // Check if user exists
+    let userQuery = `
+      SELECT user_id, name, email, role, points, level, streak, photo_url
+      FROM users 
+      WHERE email = $1
+    `;
+
+    let result = await client.query<User>(userQuery, [email]);
+
+    let user: User;
+
+    if (result.rows.length === 0) {
+      // Create new user - UPDATED to include photo_url
+      console.log("👤 Creating new user with Google profile picture");
+      const insertQuery = `
+        INSERT INTO users (name, email, google_id, role, points, level, streak, photo_url)
+        VALUES ($1, $2, $3, 'Learner', 0, 1, 0, $4)
+        RETURNING user_id, name, email, role, points, level, streak, photo_url
+      `;
+
+      const insertResult = await client.query<User>(insertQuery, [
+        name || email.split("@")[0], // Use name or email prefix
+        email,
+        googleId,
+        picture, // ADDED: Store Google profile picture URL
+      ]);
+
+      user = insertResult.rows[0];
+      console.log("✅ New user created with photo URL:", picture);
+    } else {
+      user = result.rows[0];
+
+      // Update existing user - UPDATED to update photo_url and google_id
+      console.log(
+        "🔄 Updating existing user with latest Google profile picture"
+      );
+      await client.query(
+        `UPDATE users 
+         SET photo_url = $1, google_id = $2, last_login_date = CURRENT_TIMESTAMP 
+         WHERE user_id = $3`,
+        [picture, googleId, user.user_id]
+      );
+
+      // Update user object with new photo URL
+      user.photo_url = picture;
+      console.log("✅ Existing user updated with photo URL:", picture);
+    }
+
+    // Generate token
+    const token = generateToken(user.user_id);
+
+    // Set HTTP-only cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Welcome ${user.name}`,
+      user: {
+        id: user.user_id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        points: user.points,
+        level: user.level,
+        streak: user.streak,
+        // ADDED: Include photo URL in response
+        photoUrl: user.photo_url,
+        photo_url: user.photo_url,
+      },
+      token: token,
+    });
+  } catch (error) {
+    console.error("Google login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to authenticate with Google. Please try again.",
+    });
+  } finally {
+    if (client) client.release();
+  }
+};
+
+// Update user profile - ENHANCED to include photo_url updates
 export const updateProfile = async (
   req: Request<{}, {}, UpdateProfileRequest>,
   res: Response<{ success: boolean; message: string; data?: User }>
@@ -129,6 +264,7 @@ export const updateProfile = async (
       "primary_target_language",
       "daily_time_commitment",
       "timezone",
+      "photo_url", // ADDED: Allow photo URL updates
     ];
 
     // Filter only allowed fields
@@ -156,13 +292,13 @@ export const updateProfile = async (
 
     client = await pgPool.connect();
 
-    // FIXED: Correct column names in UPDATE query
+    // UPDATED: Include photo_url in RETURNING clause
     const updateQuery = `
       UPDATE users 
       SET ${updateFields.join(", ")}, updated_at = CURRENT_TIMESTAMP
       WHERE user_id = $${paramIndex}
       RETURNING 
-        user_id, name, email, role, nickname, 
+        user_id, name, email, role, nickname, photo_url,
         language_preference, mother_tongue, primary_target_language,
         daily_time_commitment, timezone, points, level, streak,
         created_at, updated_at, last_login_date
@@ -180,7 +316,7 @@ export const updateProfile = async (
 
     const updatedUser = result.rows[0];
 
-    // Format response data
+    // Format response data - ADDED photo URL mapping
     const userData: User = {
       id: updatedUser.user_id,
       user_id: updatedUser.user_id,
@@ -196,9 +332,12 @@ export const updateProfile = async (
       points: updatedUser.points || 0,
       level: updatedUser.level || 1,
       streak: updatedUser.streak || 0,
-      created_at: updatedUser.created_at, // Fixed: using created_at
-      updated_at: updatedUser.updated_at, // Fixed: using updated_at
+      created_at: updatedUser.created_at,
+      updated_at: updatedUser.updated_at,
       last_login_date: updatedUser.last_login_date,
+      // ADDED: Include photo URL
+      photo_url: updatedUser.photo_url,
+      photoUrl: updatedUser.photo_url,
     };
 
     res.status(200).json({
@@ -217,7 +356,7 @@ export const updateProfile = async (
   }
 };
 
-// User registration - Fixed column names
+// User registration - UPDATED to support photo_url
 export const register = async (
   req: Request<{}, {}, RegisterRequest>,
   res: Response<AuthResponse>
@@ -254,11 +393,11 @@ export const register = async (
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Insert new user - using correct column names
+    // Insert new user - ready for photo_url (will be NULL for email registrations)
     const insertQuery = `
       INSERT INTO users (name, email, password, role, points, level, streak)
       VALUES ($1, $2, $3, 'Learner', 0, 1, 0)
-      RETURNING user_id, name, email, role, points, level, streak, created_at
+      RETURNING user_id, name, email, role, points, level, streak, photo_url, created_at
     `;
 
     const result = await client.query<User>(insertQuery, [
@@ -292,6 +431,7 @@ export const register = async (
         points: user.points,
         level: user.level,
         streak: user.streak,
+        photoUrl: user.photo_url, // Will be null for email registrations
       },
     });
   } catch (error) {
@@ -305,7 +445,7 @@ export const register = async (
   }
 };
 
-// User login - Fixed column names
+// User login - UPDATED to include photo_url in response
 export const login = async (
   req: Request<{}, {}, LoginRequest>,
   res: Response<AuthResponse>
@@ -324,9 +464,9 @@ export const login = async (
 
     client = await pgPool.connect();
 
-    // Find user by email
+    // Find user by email - ADDED photo_url to query
     const userQuery = `
-      SELECT user_id, name, email, password, role, points, level, streak
+      SELECT user_id, name, email, password, role, points, level, streak, photo_url
       FROM users 
       WHERE email = $1
     `;
@@ -361,7 +501,7 @@ export const login = async (
       return;
     }
 
-    // Update last login - column name is correct
+    // Update last login
     await client.query(
       "UPDATE users SET last_login_date = CURRENT_TIMESTAMP WHERE user_id = $1",
       [user.user_id]
@@ -389,6 +529,7 @@ export const login = async (
         points: user.points,
         level: user.level,
         streak: user.streak,
+        photoUrl: user.photo_url, // ADDED: Include photo URL
       },
       token: token,
     });
@@ -397,116 +538,6 @@ export const login = async (
     res.status(500).json({
       success: false,
       message: "Failed to login user. Please try again.",
-    });
-  } finally {
-    if (client) client.release();
-  }
-};
-
-// Google OAuth login - Fixed column references
-export const googleLogin = async (
-  req: Request<{}, {}, GoogleLoginRequest>,
-  res: Response<AuthResponse>
-): Promise<void> => {
-  let client;
-  try {
-    const { credential } = req.body;
-
-    if (!credential) {
-      res.status(400).json({
-        success: false,
-        message: "Google credential is required.",
-      });
-      return;
-    }
-
-    // Verify Google token
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-
-    if (!payload || !payload.email) {
-      res.status(400).json({
-        success: false,
-        message: "Invalid Google token.",
-      });
-      return;
-    }
-
-    const { email, name, picture } = payload;
-
-    client = await pgPool.connect();
-
-    // Check if user exists
-    let userQuery = `
-      SELECT user_id, name, email, role, points, level, streak
-      FROM users 
-      WHERE email = $1
-    `;
-
-    let result = await client.query<User>(userQuery, [email]);
-
-    let user: User;
-
-    if (result.rows.length === 0) {
-      // Create new user - using correct default role
-      const insertQuery = `
-        INSERT INTO users (name, email, role, points, level, streak, google_id)
-        VALUES ($1, $2, 'Learner', 0, 1, 0, $3)
-        RETURNING user_id, name, email, role, points, level, streak
-      `;
-
-      const insertResult = await client.query<User>(insertQuery, [
-        name,
-        email,
-        payload.sub, // Google ID
-      ]);
-
-      user = insertResult.rows[0];
-    } else {
-      user = result.rows[0];
-
-      // Update last login - column name is correct
-      await client.query(
-        "UPDATE users SET last_login_date = CURRENT_TIMESTAMP WHERE user_id = $1",
-        [user.user_id]
-      );
-    }
-
-    // Generate token
-    const token = generateToken(user.user_id);
-
-    // Set HTTP-only cookie
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    res.status(200).json({
-      success: true,
-      message: `Welcome ${user.name}`,
-      user: {
-        id: user.user_id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        points: user.points,
-        level: user.level,
-        streak: user.streak,
-        photoUrl: picture,
-      },
-      token: token,
-    });
-  } catch (error) {
-    console.error("Google login error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to authenticate with Google. Please try again.",
     });
   } finally {
     if (client) client.release();

@@ -1,5 +1,5 @@
 // ts-server/src/types/models.ts
-// Fixed User interface to match PostgreSQL schema exactly
+// Updated User interface with photo_url support for Google profile pictures
 
 export interface User {
   // Core identity fields (matching PostgreSQL schema)
@@ -28,13 +28,17 @@ export interface User {
   is_active?: boolean;
   onboarding_completed?: boolean;
 
-  // Timestamps (FIXED - matching database schema)
-  created_at: Date; // Changed from created_date
-  updated_at: Date; // Changed from updated_date
+  // UPDATED: Profile picture fields
+  photo_url?: string; // Database field - stores the actual URL
+  photoUrl?: string; // Frontend alias - for compatibility
+  avatar_url?: string; // Legacy field (if exists)
+
+  // Timestamps (matching database schema)
+  created_at: Date;
+  updated_at: Date;
 
   // Frontend compatibility fields (optional)
   id?: string; // Alias for user_id
-  photoUrl?: string; // For Google OAuth photos
 }
 
 export interface Purchase {
@@ -295,6 +299,7 @@ export interface GoogleLoginRequest {
   credential: string; // Google ID token
 }
 
+// UPDATED: Add photo_url to update profile request
 export interface UpdateProfileRequest {
   name?: string;
   nickname?: string;
@@ -303,6 +308,7 @@ export interface UpdateProfileRequest {
   primary_target_language?: string;
   daily_time_commitment?: number;
   timezone?: string;
+  photo_url?: string; // ADDED: Allow profile picture updates
 }
 
 export interface CreateCourseRequest {
@@ -336,3 +342,17 @@ export type ExerciseType =
   | "pronunciation";
 export type DifficultyLevel = "beginner" | "intermediate" | "advanced";
 export type CompetencyLevel = "A1" | "A2" | "B1" | "B2" | "C1" | "C2";
+
+// ADDED: Profile picture related types
+export interface ProfilePictureSource {
+  type: "google" | "custom" | "gravatar" | "default";
+  url: string;
+  isValid: boolean;
+}
+
+export interface ImageValidationResult {
+  isValid: boolean;
+  source: "google" | "custom" | "gravatar" | "default" | "none";
+  url?: string;
+  error?: string;
+}

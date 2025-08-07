@@ -17,6 +17,9 @@ CREATE TABLE users (
     role VARCHAR(50) NOT NULL DEFAULT 'Learner' CHECK (role IN ('Learner', 'Instructor')),
     enrolled_courses TEXT[], -- Array of course IDs from DynamoDB
     
+    -- Profile fields
+    photo_url TEXT, 
+
     -- Gamification fields
     points INTEGER DEFAULT 0,
     level INTEGER DEFAULT 1,
